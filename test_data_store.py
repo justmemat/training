@@ -35,6 +35,12 @@ from training_history_service import (
 
 
 class DataStoreTests(unittest.TestCase):
+    def test_default_data_location_uses_shared_assets_directory(self) -> None:
+        self.assertEqual(
+            str(data_store.DATA_DIRECTORY),
+            r"T:\BAE\Training\Onboarding\Masters\App\Assets",
+        )
+
     def test_initializes_separate_files_and_round_trips_records(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             with patch.object(data_store, "DATA_DIRECTORY", Path(directory)):

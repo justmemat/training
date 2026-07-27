@@ -1,14 +1,11 @@
 """JSON storage configuration for the OSF Training application."""
 
 import json
-import os
 from pathlib import Path
 from typing import Any
 
 
-DATA_DIRECTORY = Path(
-    os.environ.get("TRAINING_APP_DATA_DIR", r"C:\OSFTOOLS\Training_App")
-)
+DATA_DIRECTORY = Path(r"T:\BAE\Training\Onboarding\Masters\App\Assets")
 
 # Keep unrelated records in separate files so each feature can evolve on its own.
 DATA_FILES: dict[str, str] = {

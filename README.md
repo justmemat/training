@@ -24,3 +24,9 @@ py main.py
 
 The PDF-generation feature requires `pypdf`. Installing `requirements.txt` installs
 both Flet and pypdf and is preferred over installing packages one at a time.
+
+Application JSON data is stored in separate feature files under:
+
+```text
+T:\BAE\Training\Onboarding\Masters\App\Assets
+```
