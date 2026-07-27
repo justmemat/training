@@ -3,7 +3,7 @@
 import flet as ft
 
 from data_store import load_records, save_records
-from team_member_service import display_name, upsert_member
+from team_member_service import display_name, role_sort_key, upsert_member
 
 
 def build_team_members_view(page: ft.Page) -> ft.View:
@@ -36,6 +36,12 @@ def build_team_members_view(page: ft.Page) -> ft.View:
             max_length=6,
             capitalization=ft.TextCapitalization.CHARACTERS,
         )
+        email = ft.TextField(
+            label="Email address (optional)",
+            value=member.get("email", "") if member else "",
+            keyboard_type=ft.KeyboardType.EMAIL,
+            prefix_icon=ft.Icons.EMAIL_OUTLINED,
+        )
         manager = ft.Checkbox(
             label="Manager", value=bool(member and member.get("is_manager"))
         )
@@ -55,6 +61,7 @@ def build_team_members_view(page: ft.Page) -> ft.View:
                     first_name=first_name.value or "",
                     last_name=last_name.value or "",
                     operating_initials=operating_initials.value or "",
+                    email=email.value or "",
                     is_manager=bool(manager.value),
                     is_training_lead=bool(training_lead.value),
                     member_id=member.get("id") if member else None,
@@ -76,6 +83,7 @@ def build_team_members_view(page: ft.Page) -> ft.View:
                         first_name,
                         last_name,
                         operating_initials,
+                        email,
                         ft.Row([manager, training_lead], wrap=True),
                         error_text,
                     ],
@@ -150,7 +158,10 @@ def build_team_members_view(page: ft.Page) -> ft.View:
                                 size=18,
                                 weight=ft.FontWeight.BOLD,
                             ),
-                            ft.Text("Team member record", color=ft.Colors.GREY_700),
+                            ft.Text(
+                                member.get("email") or "No email address provided",
+                                color=ft.Colors.GREY_700,
+                            ),
                         ],
                         spacing=2,
                         expand=True,
@@ -178,13 +189,7 @@ def build_team_members_view(page: ft.Page) -> ft.View:
     def render_members() -> None:
         member_list.controls = [
             member_row(member)
-            for member in sorted(
-                members,
-                key=lambda item: (
-                    str(item.get("last_name", "")).lower(),
-                    str(item.get("first_name", "")).lower(),
-                ),
-            )
+            for member in sorted(members, key=role_sort_key)
         ]
         empty_message.visible = not members
 

@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import data_store
-from team_member_service import display_name, upsert_member
+from team_member_service import display_name, role_sort_key, upsert_member
 
 
 class DataStoreTests(unittest.TestCase):
@@ -36,11 +36,13 @@ class TeamMemberServiceTests(unittest.TestCase):
             first_name="  Jamie ",
             last_name="Rivera",
             operating_initials=" jr ",
+            email=" jamie.rivera@example.com ",
             is_manager=True,
             is_training_lead=False,
         )
         self.assertEqual(display_name(created), "J. Rivera")
         self.assertEqual(created["operating_initials"], "JR")
+        self.assertEqual(created["email"], "jamie.rivera@example.com")
         self.assertTrue(created["is_manager"])
 
         updated = upsert_member(
@@ -48,6 +50,7 @@ class TeamMemberServiceTests(unittest.TestCase):
             first_name="James",
             last_name="Rivera",
             operating_initials="JR",
+            email="james.rivera@example.com",
             is_manager=False,
             is_training_lead=True,
             member_id=created["id"],
@@ -63,6 +66,7 @@ class TeamMemberServiceTests(unittest.TestCase):
             first_name="Alex",
             last_name="One",
             operating_initials="AO",
+            email="",
             is_manager=False,
             is_training_lead=True,
         )
@@ -71,6 +75,7 @@ class TeamMemberServiceTests(unittest.TestCase):
             first_name="Blair",
             last_name="Two",
             operating_initials="BT",
+            email="",
             is_manager=False,
             is_training_lead=True,
         )
@@ -84,6 +89,7 @@ class TeamMemberServiceTests(unittest.TestCase):
             first_name="Alex",
             last_name="One",
             operating_initials="AO",
+            email="",
             is_manager=False,
             is_training_lead=False,
         )
@@ -93,9 +99,35 @@ class TeamMemberServiceTests(unittest.TestCase):
                 first_name="Another",
                 last_name="Operator",
                 operating_initials="ao",
+                email="",
                 is_manager=False,
                 is_training_lead=False,
             )
+
+    def test_optional_email_is_validated(self) -> None:
+        with self.assertRaisesRegex(ValueError, "valid email"):
+            upsert_member(
+                [],
+                first_name="Alex",
+                last_name="One",
+                operating_initials="AO",
+                email="not-an-email",
+                is_manager=False,
+                is_training_lead=False,
+            )
+
+    def test_members_sort_by_role_then_name(self) -> None:
+        members = [
+            {"first_name": "Zoe", "last_name": "Member"},
+            {"first_name": "Taylor", "last_name": "Lead", "is_training_lead": True},
+            {"first_name": "Morgan", "last_name": "Boss", "is_manager": True},
+            {"first_name": "Aaron", "last_name": "Able", "is_manager": True},
+        ]
+        ordered = sorted(members, key=role_sort_key)
+        self.assertEqual(
+            [member["first_name"] for member in ordered],
+            ["Aaron", "Morgan", "Taylor", "Zoe"],
+        )
 
 
 if __name__ == "__main__":
