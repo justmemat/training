@@ -7,7 +7,12 @@ from unittest.mock import patch
 
 import data_store
 from team_member_service import display_name, role_sort_key, upsert_member
-from trainee_service import TRAINING_PHASES, ensure_profile, update_profile
+from trainee_service import (
+    TRAINING_PHASES,
+    ensure_profile,
+    format_start_date,
+    update_profile,
+)
 
 
 class DataStoreTests(unittest.TestCase):
@@ -133,6 +138,10 @@ class TeamMemberServiceTests(unittest.TestCase):
 
 
 class TraineeServiceTests(unittest.TestCase):
+    def test_start_date_uses_readable_display_format(self) -> None:
+        self.assertEqual(format_start_date("2026-07-27"), "27 Jul 2026")
+        self.assertEqual(format_start_date(""), "")
+
     def test_profile_creation_and_update(self) -> None:
         profiles: list[dict] = []
         profile = ensure_profile(profiles, "member-1")

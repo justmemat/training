@@ -1,10 +1,17 @@
 """Trainee assignment and training-information page."""
 
+from datetime import datetime
+
 import flet as ft
 
 from data_store import load_records, save_records
 from team_member_service import display_name
-from trainee_service import TRAINING_PHASES, ensure_profile, get_profile, update_profile
+from trainee_service import (
+    TRAINING_PHASES,
+    ensure_profile,
+    format_start_date,
+    update_profile,
+)
 
 
 def build_trainees_view(page: ft.Page) -> ft.View:
@@ -56,13 +63,36 @@ def build_trainees_view(page: ft.Page) -> ft.View:
             return
 
         profile = ensure_profile(profiles, member["id"])
+        selected_start_date = str(profile.get("start_date", ""))
         start_date = ft.TextField(
             label="Start date",
-            value=profile.get("start_date", ""),
-            hint_text="YYYY-MM-DD",
+            value=format_start_date(selected_start_date),
+            hint_text="Select a date",
             prefix_icon=ft.Icons.CALENDAR_MONTH,
+            read_only=True,
             width=260,
         )
+
+        def date_selected(_: ft.ControlEvent) -> None:
+            nonlocal selected_start_date
+            if date_picker.value is None:
+                return
+            selected_start_date = date_picker.value.strftime("%Y-%m-%d")
+            start_date.value = format_start_date(selected_start_date)
+            start_date.update()
+
+        date_picker = ft.DatePicker(
+            value=(
+                datetime.fromisoformat(selected_start_date)
+                if selected_start_date
+                else datetime.now()
+            ),
+            first_date=datetime(2000, 1, 1),
+            last_date=datetime(2100, 12, 31),
+            help_text="Select trainee start date",
+            on_change=date_selected,
+        )
+        start_date.on_click = lambda _: page.open(date_picker)
         phase = ft.Dropdown(
             label="Training Phase",
             value=profile.get("training_phase", TRAINING_PHASES[0]),
@@ -75,7 +105,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
             try:
                 update_profile(
                     profile,
-                    start_date=start_date.value or "",
+                    start_date=selected_start_date,
                     training_phase=phase.value or "",
                 )
             except ValueError as error:

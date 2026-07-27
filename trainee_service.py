@@ -20,6 +20,16 @@ def validate_training_details(start_date: str, training_phase: str) -> tuple[str
     return normalized_date, training_phase
 
 
+def format_start_date(start_date: str) -> str:
+    """Format a stored ISO date for display, for example ``27 Jul 2026``."""
+    if not start_date:
+        return ""
+    try:
+        return date.fromisoformat(start_date).strftime("%d %b %Y")
+    except ValueError:
+        return start_date
+
+
 def get_profile(
     profiles: list[dict[str, Any]], team_member_id: str
 ) -> dict[str, Any] | None:
