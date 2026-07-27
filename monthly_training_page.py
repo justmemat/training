@@ -23,7 +23,7 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
     sessions = loaded_sessions if isinstance(loaded_sessions, list) else []
     history_list = ft.Column(spacing=10)
     empty_history = ft.Text(
-        "No monthly training sessions have been submitted.",
+        "No dataset available...",
         color=ft.Colors.GREY_600,
         italic=True,
     )
@@ -243,9 +243,51 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
     report_button = ft.OutlinedButton(
         "Generate History Report", icon=ft.Icons.TABLE_VIEW, on_click=generate_report
     )
+    page_content = ft.ListView(
+        controls=[
+            ft.Row(
+                [
+                    ft.Column(
+                        [
+                            ft.Text(
+                                "Monthly Training",
+                                size=30,
+                                weight=ft.FontWeight.BOLD,
+                            ),
+                            ft.Text(
+                                "Submit an item to track presented training.",
+                                color=ft.Colors.GREY_700,
+                            ),
+                        ],
+                        expand=True,
+                    ),
+                    ft.FilledButton(
+                        "Submit training item",
+                        icon=ft.Icons.ADD,
+                        on_click=lambda _: open_submission_dialog(),
+                    ),
+                    report_button,
+                ],
+                wrap=True,
+            ),
+            report_progress,
+            status,
+            ft.Divider(),
+            ft.Text(
+                "Tracked Training",
+                size=22,
+                weight=ft.FontWeight.BOLD,
+            ),
+            empty_history,
+            history_list,
+        ],
+        expand=True,
+        padding=32,
+        spacing=16,
+    )
     return ft.View(
         route="/monthly-training",
-        bgcolor=ft.Colors.INDIGO_50,
+        bgcolor=ft.Colors.WHITE,
         appbar=ft.AppBar(
             leading=ft.IconButton(
                 icon=ft.Icons.ARROW_BACK,
@@ -255,52 +297,5 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
             title=ft.Text("Monthly Training"),
             bgcolor=ft.Colors.WHITE,
         ),
-        controls=[
-            ft.Container(
-                content=ft.Column(
-                    [
-                        ft.Row(
-                            [
-                                ft.Column(
-                                    [
-                                        ft.Text(
-                                            "Monthly Training",
-                                            size=30,
-                                            weight=ft.FontWeight.BOLD,
-                                        ),
-                                        ft.Text(
-                                            "Submit sessions and review monthly training history.",
-                                            color=ft.Colors.GREY_700,
-                                        ),
-                                    ],
-                                    expand=True,
-                                ),
-                                ft.FilledButton(
-                                    "Submit training session",
-                                    icon=ft.Icons.ADD,
-                                    on_click=lambda _: open_submission_dialog(),
-                                ),
-                                report_button,
-                            ],
-                            wrap=True,
-                        ),
-                        report_progress,
-                        status,
-                        ft.Divider(),
-                        ft.Text(
-                            "Training History",
-                            size=22,
-                            weight=ft.FontWeight.BOLD,
-                        ),
-                        empty_history,
-                        history_list,
-                    ],
-                    spacing=16,
-                ),
-                width=1000,
-                padding=32,
-            )
-        ],
-        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-        scroll=ft.ScrollMode.AUTO,
+        controls=[page_content],
     )
