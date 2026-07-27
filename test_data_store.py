@@ -26,6 +26,12 @@ from history_report_service import (
     instructor_percentages,
     training_end_date,
 )
+from monthly_training_service import (
+    MONTHLY_REPORT_DIRECTORY,
+    MONTHLY_REPORT_NAME,
+    create_session_record,
+    sorted_sessions,
+)
 from training_history_service import (
     create_history_record,
     open_report_file,
@@ -441,6 +447,37 @@ class HistoryReportServiceTests(unittest.TestCase):
         )
         self.assertAlmostEqual(percentages["a"], 2 / 3)
         self.assertAlmostEqual(percentages["b"], 1 / 3)
+
+
+class MonthlyTrainingServiceTests(unittest.TestCase):
+    def test_history_report_uses_single_shared_workbook_path(self) -> None:
+        self.assertEqual(
+            str(MONTHLY_REPORT_DIRECTORY), r"T:\BAE\Training\Monthly\Reports"
+        )
+        self.assertEqual(MONTHLY_REPORT_NAME, "Monthly Training History.xlsx")
+
+    def test_session_records_file_date_instructor_and_attendance(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            presentation = Path(directory) / "presentation.pdf"
+            presentation.touch()
+            members = [{"id": "one"}, {"id": "two"}]
+            record = create_session_record(
+                presentation_date=date(2026, 7, 27),
+                instructor_id="one",
+                attendee_ids=["one", "two", "one"],
+                presentation_path=str(presentation),
+                team_members=members,
+            )
+            self.assertEqual(record["date"], "2026-07-27")
+            self.assertEqual(record["instructor_id"], "one")
+            self.assertEqual(record["attendee_ids"], ["one", "two"])
+            self.assertEqual(record["presentation_path"], str(presentation))
+
+    def test_sessions_are_sorted_newest_first(self) -> None:
+        sessions = sorted_sessions(
+            [{"date": "2026-07-01"}, {"date": "2026-08-01"}]
+        )
+        self.assertEqual([session["date"] for session in sessions], ["2026-08-01", "2026-07-01"])
 
 
 if __name__ == "__main__":
