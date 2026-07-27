@@ -16,42 +16,59 @@ def report(action):
     try:
         action()
     except (ValidationError, ReferencedMemberError, sqlite3.IntegrityError) as exc:
-        message = "Operating initials must be unique." if "UNIQUE constraint failed: team_members.initials" in str(exc) else str(exc)
+        if "team_members.initials" in str(exc):
+            message = "Operating initials must be unique."
+        elif "team_members.is_training_lead" in str(exc):
+            message = "Only one team member can be assigned as Training Lead."
+        else:
+            message = str(exc)
         st.error(message)
     else:
         st.success("Saved successfully.")
 
 
 def choices(members):
-    return {f"{m['full_name']} ({m['initials']})": m["id"] for m in members}
+    return {f"{m['display_name']} ({m['initials']})": m["id"] for m in members}
 
 
 def member_page():
     st.header("Team Members")
     members = db.list_members()
-    st.dataframe(pd.DataFrame([dict(m) for m in members]), hide_index=True, use_container_width=True)
+    member_rows = [{"Name": m["display_name"], "Operating initials": m["initials"],
+                    "Manager": bool(m["is_manager"]),
+                    "Training Lead": bool(m["is_training_lead"])} for m in members]
+    st.dataframe(pd.DataFrame(member_rows), hide_index=True, use_container_width=True)
     with st.form("add_member", clear_on_submit=True):
         st.subheader("Add member")
-        name = st.text_input("Full name")
+        first_name = st.text_input("First name")
+        last_name = st.text_input("Last name")
         initials = st.text_input("Operating initials")
+        is_manager = st.checkbox("Manager")
+        is_training_lead = st.checkbox("Training Lead")
         if st.form_submit_button("Add member"):
-            report(lambda: db.add_member(name, initials))
+            report(lambda: db.add_member(first_name, last_name, initials,
+                                         is_manager, is_training_lead))
     if members:
         labels = choices(members)
         selected = st.selectbox("Member to edit", labels)
         member = next(m for m in members if m["id"] == labels[selected])
         with st.form("edit_member"):
-            name = st.text_input("Full name", member["full_name"], key="edit_name")
+            first_name = st.text_input("First name", member["first_name"], key="edit_first_name")
+            last_name = st.text_input("Last name", member["last_name"], key="edit_last_name")
             initials = st.text_input("Operating initials", member["initials"], key="edit_initials")
+            is_manager = st.checkbox("Manager", bool(member["is_manager"]), key="edit_manager")
+            is_training_lead = st.checkbox("Training Lead", bool(member["is_training_lead"]),
+                                           key="edit_training_lead")
             if st.form_submit_button("Save changes"):
-                report(lambda: db.update_member(member["id"], name, initials))
+                report(lambda: db.update_member(member["id"], first_name, last_name, initials,
+                                                is_manager, is_training_lead))
         confirm = st.checkbox("I understand deletion is permanent", key="confirm_delete")
         if st.button("Remove member", disabled=not confirm):
             report(lambda: db.delete_member(member["id"]))
 
 
 def trainee_page():
-    st.header("Individual Trainees")
+    st.header("Trainees")
     members = db.list_members()
     if not members:
         st.info("Add team members before creating a trainee profile.")
@@ -60,6 +77,15 @@ def trainee_page():
     trainee_label = st.selectbox("Trainee", labels)
     trainee_id = labels[trainee_label]
     profile = db.get_profile(trainee_id)
+    managers = db.list_managers()
+    training_lead = db.get_training_lead()
+    if not managers or training_lead is None:
+        missing = []
+        if not managers:
+            missing.append("at least one Manager")
+        if training_lead is None:
+            missing.append("one Training Lead")
+        st.warning(f"Assign {' and '.join(missing)} on the Team Members page before saving a trainee profile.")
     member_labels = list(labels)
     id_to_index = lambda value, fallback=0: next((i for i, label in enumerate(member_labels) if labels[label] == value), fallback)
     with st.form("profile"):
@@ -70,11 +96,18 @@ def trainee_page():
         secondary_options = ["None"] + member_labels
         secondary_index = id_to_index(profile["secondary_instructor_id"]) + 1 if profile and profile["secondary_instructor_id"] else 0
         secondary = st.selectbox("Secondary instructor", secondary_options, index=secondary_index)
-        lead = st.selectbox("Training lead", member_labels, index=id_to_index(profile["training_lead_id"]) if profile else 0)
-        manager = st.selectbox("Manager", member_labels, index=id_to_index(profile["manager_id"]) if profile else 0)
-        if st.form_submit_button("Save trainee profile"):
+        st.text_input("Training Lead", training_lead["display_name"] if training_lead else "Not assigned",
+                      disabled=True)
+        manager_labels = list(choices(managers))
+        manager_choices = choices(managers)
+        manager_index = next((i for i, label in enumerate(manager_labels)
+                              if profile and manager_choices[label] == profile["manager_id"]), 0)
+        manager = st.selectbox("Manager", manager_labels, index=manager_index,
+                               disabled=not manager_labels)
+        if st.form_submit_button("Save trainee profile", disabled=not managers or training_lead is None):
             report(lambda: db.save_profile(trainee_id, start, phase, labels[primary],
-                   None if secondary == "None" else labels[secondary], labels[lead], labels[manager]))
+                   None if secondary == "None" else labels[secondary], training_lead["id"],
+                   manager_choices[manager]))
     st.subheader("Daily instructor time")
     with st.form("daily_time", clear_on_submit=True):
         work_date = st.date_input("Work date")
@@ -121,6 +154,6 @@ def sessions_page():
     st.dataframe(pd.DataFrame([dict(row) for row in sessions]), hide_index=True, use_container_width=True)
 
 
-page = st.sidebar.radio("Navigation", ("Team Members", "Individual Trainees", "Monthly Training Sessions"))
-{"Team Members": member_page, "Individual Trainees": trainee_page,
+page = st.sidebar.radio("Navigation", ("Team Members", "Trainees", "Monthly Training Sessions"))
+{"Team Members": member_page, "Trainees": trainee_page,
  "Monthly Training Sessions": sessions_page}[page]()

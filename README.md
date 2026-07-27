@@ -46,8 +46,8 @@ To back up the application, stop Streamlit and copy `training.db` to a secure, a
 
 ## Pages
 
-* **Team Members** lists the normalized people directory and adds, edits, or—after confirmation—removes unreferenced members. Operating initials are required and unique.
-* **Individual Trainees** creates or updates a selected member's profile, records daily instructor hours and notes, and shows entry history and totals by instructor.
+* **Team Members** lists people by first initial and last name, sorted by last name, and adds, edits, or—after confirmation—removes unreferenced members. Operating initials are required and unique. Members may be designated as managers, and exactly one member at a time may be designated as Training Lead.
+* **Trainees** creates or updates a selected member's profile, records daily instructor hours and notes, and shows entry history and totals by instructor. Its Manager selector contains only designated managers and its Training Lead is supplied by the Team Members assignment.
 * **Monthly Training Sessions** creates or edits session details and attendance, and lists earlier sessions with their attendees.
 
 All people fields use the Team Members directory. Deletion is rejected while a person is referenced, protecting profile, time, session, and attendance history.

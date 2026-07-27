@@ -78,7 +78,11 @@ class Database:
                 CREATE TABLE IF NOT EXISTS team_members (
                     id INTEGER PRIMARY KEY,
                     full_name TEXT NOT NULL CHECK(length(trim(full_name)) > 0),
-                    initials TEXT NOT NULL COLLATE NOCASE UNIQUE
+                    initials TEXT NOT NULL COLLATE NOCASE UNIQUE,
+                    first_name TEXT NOT NULL DEFAULT '',
+                    last_name TEXT NOT NULL DEFAULT '',
+                    is_manager INTEGER NOT NULL DEFAULT 0 CHECK(is_manager IN (0, 1)),
+                    is_training_lead INTEGER NOT NULL DEFAULT 0 CHECK(is_training_lead IN (0, 1))
                 );
                 CREATE TABLE IF NOT EXISTS trainee_profiles (
                     trainee_id INTEGER PRIMARY KEY REFERENCES team_members(id) ON DELETE RESTRICT,
@@ -113,23 +117,69 @@ class Database:
                 """
             )
 
+            # Upgrade databases created by earlier releases without losing data.
+            columns = {row["name"] for row in db.execute("PRAGMA table_info(team_members)")}
+            additions = {
+                "first_name": "TEXT NOT NULL DEFAULT ''",
+                "last_name": "TEXT NOT NULL DEFAULT ''",
+                "is_manager": "INTEGER NOT NULL DEFAULT 0 CHECK(is_manager IN (0, 1))",
+                "is_training_lead": "INTEGER NOT NULL DEFAULT 0 CHECK(is_training_lead IN (0, 1))",
+            }
+            for name, definition in additions.items():
+                if name not in columns:
+                    db.execute(f"ALTER TABLE team_members ADD COLUMN {name} {definition}")
+            for member in db.execute(
+                "SELECT id, full_name FROM team_members WHERE first_name='' OR last_name=''"
+            ):
+                parts = member["full_name"].strip().split(maxsplit=1)
+                first_name = parts[0]
+                last_name = parts[1] if len(parts) == 2 else parts[0]
+                db.execute(
+                    "UPDATE team_members SET first_name=?, last_name=? WHERE id=?",
+                    (first_name, last_name, member["id"]),
+                )
+            db.execute("""CREATE UNIQUE INDEX IF NOT EXISTS one_training_lead
+                ON team_members(is_training_lead) WHERE is_training_lead=1""")
+
     def _all(self, sql: str, parameters: tuple = ()) -> list[sqlite3.Row]:
         with self.connect() as db:
             return db.execute(sql, parameters).fetchall()
 
-    def add_member(self, full_name: str, initials: str) -> int:
+    def add_member(self, first_name: str, last_name: str, initials: str,
+                   is_manager: bool = False, is_training_lead: bool = False) -> int:
+        first_name = clean_required(first_name, "First name")
+        last_name = clean_required(last_name, "Last name")
         with self.connect() as db:
-            cursor = db.execute("INSERT INTO team_members(full_name, initials) VALUES (?, ?)",
-                                (clean_required(full_name, "Full name"), validate_initials(initials)))
+            cursor = db.execute("""INSERT INTO team_members
+                (full_name, initials, first_name, last_name, is_manager, is_training_lead)
+                VALUES (?, ?, ?, ?, ?, ?)""",
+                (f"{first_name} {last_name}", validate_initials(initials), first_name,
+                 last_name, int(is_manager), int(is_training_lead)))
             return cursor.lastrowid
 
     def list_members(self) -> list[sqlite3.Row]:
-        return self._all("SELECT * FROM team_members ORDER BY full_name COLLATE NOCASE")
+        return self._all("""SELECT *, substr(first_name, 1, 1) || '. ' || last_name AS display_name
+            FROM team_members ORDER BY last_name COLLATE NOCASE, first_name COLLATE NOCASE""")
 
-    def update_member(self, member_id: int, full_name: str, initials: str) -> None:
+    def list_managers(self) -> list[sqlite3.Row]:
+        return self._all("""SELECT *, substr(first_name, 1, 1) || '. ' || last_name AS display_name
+            FROM team_members WHERE is_manager=1
+            ORDER BY last_name COLLATE NOCASE, first_name COLLATE NOCASE""")
+
+    def get_training_lead(self) -> sqlite3.Row | None:
+        rows = self._all("""SELECT *, substr(first_name, 1, 1) || '. ' || last_name AS display_name
+            FROM team_members WHERE is_training_lead=1""")
+        return rows[0] if rows else None
+
+    def update_member(self, member_id: int, first_name: str, last_name: str, initials: str,
+                      is_manager: bool = False, is_training_lead: bool = False) -> None:
+        first_name = clean_required(first_name, "First name")
+        last_name = clean_required(last_name, "Last name")
         with self.connect() as db:
-            cursor = db.execute("UPDATE team_members SET full_name=?, initials=? WHERE id=?",
-                                (clean_required(full_name, "Full name"), validate_initials(initials), member_id))
+            cursor = db.execute("""UPDATE team_members SET full_name=?, initials=?, first_name=?,
+                last_name=?, is_manager=?, is_training_lead=? WHERE id=?""",
+                (f"{first_name} {last_name}", validate_initials(initials), first_name, last_name,
+                 int(is_manager), int(is_training_lead), member_id))
             if not cursor.rowcount:
                 raise ValidationError("Team member was not found.")
 
