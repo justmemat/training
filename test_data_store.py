@@ -43,7 +43,8 @@ from training_history_service import (
 class DataStoreTests(unittest.TestCase):
     def test_flet_is_pinned_to_compatible_version(self) -> None:
         requirements = Path("requirements.txt").read_text(encoding="utf-8")
-        self.assertIn("flet==0.80.0", requirements)
+        self.assertIn("flet==0.86.3", requirements)
+        self.assertIn("flet-desktop==0.86.3", requirements)
 
     def test_default_data_location_uses_shared_assets_directory(self) -> None:
         self.assertEqual(
