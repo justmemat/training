@@ -321,7 +321,8 @@ class TrainingReportServiceTests(unittest.TestCase):
         self.assertEqual(fields["Training_Lead"], "Lee Lead")
         self.assertEqual(fields["Training_Summary"], "Completed lesson one.")
         self.assertEqual(fields["Instructor_Comments"], "Good progress.")
-        self.assertEqual(fields["Instructor_Initials"], "PP")
+        self.assertEqual(fields["Instructors_Initials"], "PP")
+        self.assertNotIn("Instructor_Initials", fields)
         self.assertEqual(fields["Trainees_Initials1"], "JR")
         self.assertEqual(fields["Training_Lead1"], "LL")
 

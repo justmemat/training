@@ -197,10 +197,9 @@ def build_trainees_view(page: ft.Page) -> ft.View:
         def save_training(_: ft.ControlEvent) -> None:
             if not update_training_profile():
                 return
-            message.value = "Training information saved."
-            message.color = ft.Colors.GREEN_700
-            message.visible = True
-            details.update()
+            render_details()
+            page.update()
+            page.open(ft.SnackBar(ft.Text("Training information saved.")))
 
         def build_training_directory(_: ft.ControlEvent) -> None:
             if not update_training_profile():
@@ -363,6 +362,125 @@ def build_trainees_view(page: ft.Page) -> ft.View:
             on_click=lambda _: open_daily_report_dialog(),
         )
 
+        def assigned_name(member_id: str) -> str:
+            assigned = next(
+                (item for item in members if item.get("id") == member_id), None
+            )
+            if assigned is None:
+                return "Unassigned"
+            return (
+                f"{assigned.get('first_name', '')} {assigned.get('last_name', '')} "
+                f"({assigned.get('operating_initials', '')})"
+            ).strip()
+
+        plain_information = ft.Column(
+            [
+                ft.Row(
+                    [
+                        ft.Column(
+                            [
+                                ft.Text("Start date", color=ft.Colors.GREY_600),
+                                ft.Text(
+                                    format_start_date(selected_start_date) or "Not assigned",
+                                    size=17,
+                                    weight=ft.FontWeight.W_500,
+                                ),
+                            ],
+                            width=260,
+                        ),
+                        ft.Column(
+                            [
+                                ft.Text("Training Phase", color=ft.Colors.GREY_600),
+                                ft.Text(
+                                    str(profile.get("training_phase", TRAINING_PHASES[0])),
+                                    size=17,
+                                    weight=ft.FontWeight.W_500,
+                                ),
+                            ],
+                            width=260,
+                        ),
+                    ],
+                    wrap=True,
+                    spacing=18,
+                ),
+                ft.Text(
+                    "Training Team",
+                    size=18,
+                    weight=ft.FontWeight.BOLD,
+                    color=ft.Colors.INDIGO_900,
+                ),
+                ft.Row(
+                    [
+                        ft.Column(
+                            [
+                                ft.Text("Primary instructor", color=ft.Colors.GREY_600),
+                                ft.Text(assigned_name(primary_value), size=16),
+                            ],
+                            width=280,
+                        ),
+                        ft.Column(
+                            [
+                                ft.Text("Secondary instructor", color=ft.Colors.GREY_600),
+                                ft.Text(assigned_name(secondary_value), size=16),
+                            ],
+                            width=280,
+                        ),
+                        ft.Column(
+                            [
+                                ft.Text("Assigned manager", color=ft.Colors.GREY_600),
+                                ft.Text(assigned_name(manager_value), size=16),
+                            ],
+                            width=280,
+                        ),
+                    ],
+                    wrap=True,
+                    spacing=18,
+                ),
+            ],
+            spacing=18,
+        )
+
+        def cancel_edit(_: ft.ControlEvent) -> None:
+            render_details()
+            page.update()
+
+        editing_information = ft.Column(
+            [
+                ft.Row([start_date, phase], wrap=True, spacing=18),
+                ft.Text(
+                    "Training Team",
+                    size=18,
+                    weight=ft.FontWeight.BOLD,
+                    color=ft.Colors.INDIGO_900,
+                ),
+                ft.Row(
+                    [primary_instructor, secondary_instructor, assigned_manager],
+                    wrap=True,
+                    spacing=18,
+                ),
+                ft.Row(
+                    [
+                        ft.FilledButton(
+                            "Save changes", icon=ft.Icons.SAVE, on_click=save_training
+                        ),
+                        ft.TextButton("Cancel", on_click=cancel_edit),
+                    ]
+                ),
+            ],
+            visible=False,
+            spacing=18,
+        )
+
+        def begin_edit(_: ft.ControlEvent) -> None:
+            plain_information.visible = False
+            editing_information.visible = True
+            edit_button.visible = False
+            details.update()
+
+        edit_button = ft.FilledTonalButton(
+            "Edit training information", icon=ft.Icons.EDIT, on_click=begin_edit
+        )
+
         details.controls = [
             ft.Container(
                 content=ft.Column(
@@ -398,25 +516,11 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                             spacing=18,
                         ),
                         ft.Divider(),
-                        ft.Row([start_date, phase], wrap=True, spacing=18),
-                        ft.Text(
-                            "Training Team",
-                            size=18,
-                            weight=ft.FontWeight.BOLD,
-                            color=ft.Colors.INDIGO_900,
-                        ),
-                        ft.Row(
-                            [primary_instructor, secondary_instructor, assigned_manager],
-                            wrap=True,
-                            spacing=18,
-                        ),
+                        plain_information,
+                        editing_information,
                         ft.Row(
                             [
-                                ft.FilledButton(
-                                    "Save training information",
-                                    icon=ft.Icons.SAVE,
-                                    on_click=save_training,
-                                ),
+                                edit_button,
                                 create_directory_button,
                                 daily_report_button,
                                 message,

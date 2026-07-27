@@ -55,7 +55,7 @@ def build_report_fields(
         "Training_Lead": full_name(training_lead),
         "Training_Summary": summary,
         "Instructor_Comments": comments,
-        "Instructor_Initials": str(instructor.get("operating_initials", "")).upper(),
+        "Instructors_Initials": str(instructor.get("operating_initials", "")).upper(),
         "Trainees_Initials1": trainee_initials,
         "Training_Lead1": str(training_lead.get("operating_initials", "")).upper(),
     }
