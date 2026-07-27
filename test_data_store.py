@@ -2,6 +2,7 @@
 
 import tempfile
 import unittest
+from datetime import date
 from pathlib import Path
 from unittest.mock import patch
 
@@ -13,6 +14,7 @@ from trainee_service import (
     format_start_date,
     update_profile,
 )
+from training_directory_service import add_business_days, build_guide_fields
 
 
 class DataStoreTests(unittest.TestCase):
@@ -201,6 +203,53 @@ class TraineeServiceTests(unittest.TestCase):
                 primary_instructor_id="missing",
                 team_members=[],
             )
+
+
+class TrainingDirectoryServiceTests(unittest.TestCase):
+    def test_business_day_calculation_skips_weekends(self) -> None:
+        self.assertEqual(add_business_days(date(2026, 7, 24), 1), date(2026, 7, 27))
+        self.assertEqual(add_business_days(date(2026, 7, 27), 30), date(2026, 9, 7))
+
+    def test_pdf_fields_are_built_from_program_data(self) -> None:
+        trainee = {
+            "id": "trainee",
+            "first_name": "Jamie",
+            "last_name": "Rivera",
+            "operating_initials": "jr",
+        }
+        members = [
+            trainee,
+            {"id": "primary", "first_name": "Pat", "last_name": "Primary"},
+            {"id": "secondary", "first_name": "Sam", "last_name": "Second"},
+            {
+                "id": "lead",
+                "first_name": "Lee",
+                "last_name": "Lead",
+                "is_training_lead": True,
+            },
+            {
+                "id": "manager",
+                "first_name": "Morgan",
+                "last_name": "Manager",
+                "is_manager": True,
+            },
+        ]
+        profile = {
+            "start_date": "2026-07-27",
+            "primary_instructor_id": "primary",
+            "secondary_instructor_id": "secondary",
+            "manager_id": "manager",
+        }
+        fields = build_guide_fields(trainee, profile, members)
+        self.assertEqual(fields["NAME"], "Jamie Rivera")
+        self.assertEqual(fields["INITIALS"], "JR")
+        self.assertEqual(fields["PRIMARY"], "Pat Primary")
+        self.assertEqual(fields["SECONDARY"], "Sam Second")
+        self.assertEqual(fields["LEAD"], "Lee Lead")
+        self.assertEqual(fields["MANAGER"], "Morgan Manager")
+        self.assertEqual(fields["StartDate"], "27 Jul 2026")
+        self.assertEqual(fields["CheckOne"], "07 Sep 2026")
+        self.assertEqual(fields["StudentName"], "Jamie Rivera")
 
 
 if __name__ == "__main__":

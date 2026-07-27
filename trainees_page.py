@@ -12,6 +12,7 @@ from trainee_service import (
     format_start_date,
     update_profile,
 )
+from training_directory_service import create_training_directory
 
 
 def build_trainees_view(page: ft.Page) -> ft.View:
@@ -166,7 +167,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
         )
         message = ft.Text(visible=False)
 
-        def save_training(_: ft.ControlEvent) -> None:
+        def update_training_profile() -> bool:
             try:
                 update_profile(
                     profile,
@@ -182,9 +183,30 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                 message.color = ft.Colors.RED_700
                 message.visible = True
                 details.update()
-                return
+                return False
             save_all()
+            return True
+
+        def save_training(_: ft.ControlEvent) -> None:
+            if not update_training_profile():
+                return
             message.value = "Training information saved."
+            message.color = ft.Colors.GREEN_700
+            message.visible = True
+            details.update()
+
+        def build_training_directory(_: ft.ControlEvent) -> None:
+            if not update_training_profile():
+                return
+            try:
+                output_path = create_training_directory(member, profile, members)
+            except (FileNotFoundError, OSError, ValueError) as error:
+                message.value = str(error)
+                message.color = ft.Colors.RED_700
+                message.visible = True
+                details.update()
+                return
+            message.value = f"Training directory created: {output_path}"
             message.color = ft.Colors.GREEN_700
             message.visible = True
             details.update()
@@ -226,7 +248,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                         ft.Divider(),
                         ft.Row([start_date, phase], wrap=True, spacing=18),
                         ft.Text(
-                            "Training assignments",
+                            "Training Team",
                             size=18,
                             weight=ft.FontWeight.BOLD,
                             color=ft.Colors.INDIGO_900,
@@ -242,6 +264,11 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                                     "Save training information",
                                     icon=ft.Icons.SAVE,
                                     on_click=save_training,
+                                ),
+                                ft.OutlinedButton(
+                                    "Create training directory",
+                                    icon=ft.Icons.CREATE_NEW_FOLDER,
+                                    on_click=build_training_directory,
                                 ),
                                 message,
                             ],
