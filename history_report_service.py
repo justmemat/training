@@ -59,7 +59,7 @@ def generate_history_report(
 ) -> Path:
     """Create or replace the trainee's Excel Training History Report."""
     from openpyxl import Workbook
-    from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
     initials = str(trainee.get("operating_initials", "")).strip().upper()
     reports_directory = output_root / initials / "Reports"
@@ -146,7 +146,7 @@ def generate_history_report(
         percentage_row += 1
 
     history_start = percentage_row + 1
-    sheet.merge_cells(start_row=history_start, start_column=1, end_row=history_start, end_column=2)
+    sheet.merge_cells(start_row=history_start, start_column=1, end_row=history_start, end_column=3)
     sheet.cell(history_start, 1, "Days Trained and Instructor").fill = section_fill
     sheet.cell(history_start, 1).font = Font(bold=True)
     sheet.append(["Training Date", "Instructor"])
@@ -159,6 +159,25 @@ def generate_history_report(
             ]
         )
         sheet.cell(sheet.max_row, 1).number_format = "dd mmm yyyy"
+        sheet.cell(sheet.max_row, 1).alignment = Alignment(horizontal="left")
+
+    thin = Side(style="thin", color="000000")
+    thick = Side(style="thick", color="000000")
+    last_row = sheet.max_row
+    last_column = 3
+    for row in range(1, last_row + 1):
+        for column in range(1, last_column + 1):
+            cell = sheet.cell(row, column)
+            if cell.value is not None:
+                cell.border = Border(left=thin, right=thin, top=thin, bottom=thin)
+            if row in (1, last_row) or column in (1, last_column):
+                current = cell.border
+                cell.border = Border(
+                    left=thick if column == 1 else current.left,
+                    right=thick if column == last_column else current.right,
+                    top=thick if row == 1 else current.top,
+                    bottom=thick if row == last_row else current.bottom,
+                )
 
     output_path = reports_directory / f"Training History Report - {initials}.xlsx"
     workbook.save(output_path)
