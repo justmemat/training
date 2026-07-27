@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import data_store
 from team_member_service import display_name, role_sort_key, upsert_member
+from trainee_service import TRAINING_PHASES, ensure_profile, update_profile
 
 
 class DataStoreTests(unittest.TestCase):
@@ -44,6 +45,7 @@ class TeamMemberServiceTests(unittest.TestCase):
         self.assertEqual(created["operating_initials"], "JR")
         self.assertEqual(created["email"], "jamie.rivera@example.com")
         self.assertTrue(created["is_manager"])
+        self.assertFalse(created["is_trainee"])
 
         updated = upsert_member(
             members,
@@ -128,6 +130,33 @@ class TeamMemberServiceTests(unittest.TestCase):
             [member["first_name"] for member in ordered],
             ["Aaron", "Morgan", "Taylor", "Zoe"],
         )
+
+
+class TraineeServiceTests(unittest.TestCase):
+    def test_profile_creation_and_update(self) -> None:
+        profiles: list[dict] = []
+        profile = ensure_profile(profiles, "member-1")
+        self.assertEqual(profile["training_phase"], "Ground School")
+        self.assertEqual(profile["start_date"], "")
+
+        update_profile(
+            profile, start_date="2026-07-27", training_phase="Phase Two"
+        )
+        self.assertEqual(profile["start_date"], "2026-07-27")
+        self.assertEqual(profile["training_phase"], "Phase Two")
+        self.assertIs(ensure_profile(profiles, "member-1"), profile)
+        self.assertEqual(len(profiles), 1)
+
+    def test_training_phase_and_date_are_validated(self) -> None:
+        profile = ensure_profile([], "member-1")
+        with self.assertRaisesRegex(ValueError, "YYYY-MM-DD"):
+            update_profile(
+                profile, start_date="07/27/2026", training_phase=TRAINING_PHASES[0]
+            )
+        with self.assertRaisesRegex(ValueError, "Training Phase"):
+            update_profile(
+                profile, start_date="2026-07-27", training_phase="Phase Four"
+            )
 
 
 if __name__ == "__main__":

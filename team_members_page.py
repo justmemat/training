@@ -49,6 +49,9 @@ def build_team_members_view(page: ft.Page) -> ft.View:
             label="Training Lead",
             value=bool(member and member.get("is_training_lead")),
         )
+        trainee = ft.Checkbox(
+            label="Trainee", value=bool(member and member.get("is_trainee"))
+        )
         error_text = ft.Text(color=ft.Colors.RED_700, visible=False)
 
         def close_dialog(_: ft.ControlEvent | None = None) -> None:
@@ -64,6 +67,7 @@ def build_team_members_view(page: ft.Page) -> ft.View:
                     email=email.value or "",
                     is_manager=bool(manager.value),
                     is_training_lead=bool(training_lead.value),
+                    is_trainee=bool(trainee.value),
                     member_id=member.get("id") if member else None,
                 )
             except ValueError as error:
@@ -84,7 +88,7 @@ def build_team_members_view(page: ft.Page) -> ft.View:
                         last_name,
                         operating_initials,
                         email,
-                        ft.Row([manager, training_lead], wrap=True),
+                        ft.Row([manager, training_lead, trainee], wrap=True),
                         error_text,
                     ],
                     tight=True,
@@ -135,6 +139,10 @@ def build_team_members_view(page: ft.Page) -> ft.View:
                     label=ft.Text("Training Lead"),
                     leading=ft.Icon(ft.Icons.STAR, color=ft.Colors.AMBER_700),
                 )
+            )
+        if member.get("is_trainee"):
+            roles.append(
+                ft.Chip(label=ft.Text("Trainee"), leading=ft.Icon(ft.Icons.SCHOOL))
             )
         if not roles:
             roles.append(ft.Text("Team member", color=ft.Colors.GREY_600))

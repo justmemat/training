@@ -59,6 +59,7 @@ def upsert_member(
     email: str = "",
     is_manager: bool,
     is_training_lead: bool,
+    is_trainee: bool = False,
     member_id: str | None = None,
 ) -> dict[str, Any]:
     """Add or update a member, ensuring there is at most one Training Lead."""
@@ -84,6 +85,7 @@ def upsert_member(
         "email": email,
         "is_manager": is_manager,
         "is_training_lead": is_training_lead,
+        "is_trainee": is_trainee,
     }
     for index, member in enumerate(members):
         if member.get("id") == member_id:
