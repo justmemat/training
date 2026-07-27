@@ -251,6 +251,10 @@ class TrainingDirectoryServiceTests(unittest.TestCase):
         self.assertEqual(fields["CheckOne"], "07 Sep 2026")
         self.assertEqual(fields["StudentName"], "Jamie Rivera")
 
+    def test_pypdf_is_declared_as_an_application_dependency(self) -> None:
+        requirements = Path("requirements.txt").read_text(encoding="utf-8")
+        self.assertIn("pypdf", requirements)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -200,6 +200,18 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                 return
             try:
                 output_path = create_training_directory(member, profile, members)
+            except ModuleNotFoundError as error:
+                if error.name != "pypdf":
+                    raise
+                message.value = (
+                    "PDF support is not installed. Close the app, open Command Prompt "
+                    "in the application folder, and run: "
+                    "python -m pip install -r requirements.txt"
+                )
+                message.color = ft.Colors.RED_700
+                message.visible = True
+                details.update()
+                return
             except (FileNotFoundError, OSError, ValueError) as error:
                 message.value = str(error)
                 message.color = ft.Colors.RED_700
