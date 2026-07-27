@@ -21,7 +21,11 @@ from training_directory_service import (
     trainee_directory_exists,
 )
 from training_report_service import build_report_fields
-from training_history_service import create_history_record, trainee_history
+from training_history_service import (
+    create_history_record,
+    report_file_uri,
+    trainee_history,
+)
 
 
 class DataStoreTests(unittest.TestCase):
@@ -352,6 +356,8 @@ class TrainingHistoryServiceTests(unittest.TestCase):
         self.assertEqual(record["trainee_id"], "trainee-1")
         self.assertEqual(record["instructor_id"], "instructor-1")
         self.assertEqual(record["date"], "2026-07-27")
+        self.assertEqual(record["file_name"], "report.pdf")
+        self.assertEqual(record["report_path"], r"T:\Reports\report.pdf")
 
     def test_trainee_history_is_filtered_and_newest_first(self) -> None:
         records = [
@@ -361,6 +367,14 @@ class TrainingHistoryServiceTests(unittest.TestCase):
         ]
         history = trainee_history(records, "one")
         self.assertEqual([entry["date"] for entry in history], ["2026-07-27", "2026-07-01"])
+
+    def test_report_location_converts_to_file_uri(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            report = Path(directory) / "daily report.pdf"
+            report.touch()
+            uri = report_file_uri({"report_path": str(report)})
+            self.assertTrue(uri.startswith("file:"))
+            self.assertIn("daily%20report.pdf", uri)
 
 
 if __name__ == "__main__":

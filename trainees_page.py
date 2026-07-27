@@ -1,6 +1,7 @@
 """Trainee assignment and training-information page."""
 
 from datetime import date, datetime
+from pathlib import Path
 
 import flet as ft
 
@@ -13,7 +14,11 @@ from trainee_service import (
     update_profile,
 )
 from training_directory_service import create_training_directory, trainee_directory_exists
-from training_history_service import create_history_record, trainee_history
+from training_history_service import (
+    create_history_record,
+    report_file_uri,
+    trainee_history,
+)
 from training_report_service import create_training_report
 
 
@@ -284,11 +289,28 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                     if instructor_member
                     else "Unknown instructor"
                 )
+
+                def open_report(_: ft.ControlEvent, history_entry: dict = entry) -> None:
+                    try:
+                        report_path = str(history_entry.get("report_path", ""))
+                        if not report_path or not Path(report_path).is_file():
+                            raise FileNotFoundError(
+                                f"The saved report could not be found: {report_path}"
+                            )
+                        page.launch_url(report_file_uri(history_entry))
+                    except (FileNotFoundError, OSError, ValueError) as error:
+                        page.open(ft.SnackBar(ft.Text(str(error))))
+
                 history_list.controls.append(
                     ft.Container(
                         content=ft.Row(
                             [
-                                ft.Icon(ft.Icons.DESCRIPTION, color=ft.Colors.INDIGO_500),
+                                ft.IconButton(
+                                    icon=ft.Icons.DESCRIPTION,
+                                    icon_color=ft.Colors.INDIGO_500,
+                                    tooltip=f"Open {entry.get('file_name', 'training report')}",
+                                    on_click=open_report,
+                                ),
                                 ft.Column(
                                     [
                                         ft.Text(
@@ -298,6 +320,16 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                                         ft.Text(
                                             f"Instructor: {instructor_name}",
                                             color=ft.Colors.GREY_700,
+                                        ),
+                                        ft.Text(
+                                            str(
+                                                entry.get("file_name")
+                                                or Path(
+                                                    str(entry.get("report_path", ""))
+                                                ).name
+                                            ),
+                                            size=12,
+                                            color=ft.Colors.GREY_500,
                                         ),
                                     ],
                                     spacing=2,

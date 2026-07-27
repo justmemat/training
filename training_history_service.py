@@ -1,6 +1,7 @@
 """Training-history records created from completed daily reports."""
 
 from datetime import date
+from pathlib import Path, PureWindowsPath
 from typing import Any
 from uuid import uuid4
 
@@ -17,6 +18,7 @@ def create_history_record(
         "instructor_id": instructor_id,
         "date": report_date.isoformat(),
         "report_path": report_path,
+        "file_name": PureWindowsPath(report_path).name,
     }
 
 
@@ -29,3 +31,11 @@ def trainee_history(
         key=lambda record: str(record.get("date", "")),
         reverse=True,
     )
+
+
+def report_file_uri(record: dict[str, Any]) -> str:
+    """Return a local file URI suitable for opening a saved history report."""
+    report_path = str(record.get("report_path", "")).strip()
+    if not report_path:
+        raise ValueError("This history entry does not have a saved report location.")
+    return Path(report_path).resolve().as_uri()
