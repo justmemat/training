@@ -149,10 +149,23 @@ class TraineeServiceTests(unittest.TestCase):
         self.assertEqual(profile["start_date"], "")
 
         update_profile(
-            profile, start_date="2026-07-27", training_phase="Phase Two"
+            profile,
+            start_date="2026-07-27",
+            training_phase="Phase Two",
+            primary_instructor_id="instructor-1",
+            secondary_instructor_id="instructor-2",
+            manager_id="manager-1",
+            team_members=[
+                {"id": "instructor-1"},
+                {"id": "instructor-2"},
+                {"id": "manager-1", "is_manager": True},
+            ],
         )
         self.assertEqual(profile["start_date"], "2026-07-27")
         self.assertEqual(profile["training_phase"], "Phase Two")
+        self.assertEqual(profile["primary_instructor_id"], "instructor-1")
+        self.assertEqual(profile["secondary_instructor_id"], "instructor-2")
+        self.assertEqual(profile["manager_id"], "manager-1")
         self.assertIs(ensure_profile(profiles, "member-1"), profile)
         self.assertEqual(len(profiles), 1)
 
@@ -165,6 +178,28 @@ class TraineeServiceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Training Phase"):
             update_profile(
                 profile, start_date="2026-07-27", training_phase="Phase Four"
+            )
+
+    def test_assigned_manager_requires_manager_role(self) -> None:
+        profile = ensure_profile([], "trainee-1")
+        with self.assertRaisesRegex(ValueError, "Manager role"):
+            update_profile(
+                profile,
+                start_date="2026-07-27",
+                training_phase="Ground School",
+                manager_id="member-1",
+                team_members=[{"id": "member-1", "is_manager": False}],
+            )
+
+    def test_instructors_must_reference_team_members(self) -> None:
+        profile = ensure_profile([], "trainee-1")
+        with self.assertRaisesRegex(ValueError, "valid instructor"):
+            update_profile(
+                profile,
+                start_date="2026-07-27",
+                training_phase="Ground School",
+                primary_instructor_id="missing",
+                team_members=[],
             )
 
 

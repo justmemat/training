@@ -99,6 +99,71 @@ def build_trainees_view(page: ft.Page) -> ft.View:
             options=[ft.dropdown.Option(value) for value in TRAINING_PHASES],
             width=260,
         )
+        def member_dropdown_options() -> list[ft.dropdown.Option]:
+            return [
+                ft.dropdown.Option(key="", text="Unassigned"),
+                *[
+                    ft.dropdown.Option(
+                        key=team_member["id"],
+                        text=f"{team_member.get('first_name', '')} "
+                        f"{team_member.get('last_name', '')} "
+                        f"({team_member.get('operating_initials', '')})",
+                    )
+                    for team_member in sorted(
+                        members,
+                        key=lambda item: (
+                            str(item.get("last_name", "")).lower(),
+                            str(item.get("first_name", "")).lower(),
+                        ),
+                    )
+                ],
+            ]
+        manager_options = [
+            ft.dropdown.Option(key="", text="Unassigned"),
+            *[
+                ft.dropdown.Option(
+                    key=manager["id"],
+                    text=f"{manager.get('first_name', '')} "
+                    f"{manager.get('last_name', '')} "
+                    f"({manager.get('operating_initials', '')})",
+                )
+                for manager in sorted(
+                    (item for item in members if item.get("is_manager")),
+                    key=lambda item: (
+                        str(item.get("last_name", "")).lower(),
+                        str(item.get("first_name", "")).lower(),
+                    ),
+                )
+            ],
+        ]
+        member_ids = {str(item.get("id", "")) for item in members}
+        manager_ids = {
+            str(item.get("id", "")) for item in members if item.get("is_manager")
+        }
+        primary_value = str(profile.get("primary_instructor_id", ""))
+        secondary_value = str(profile.get("secondary_instructor_id", ""))
+        manager_value = str(profile.get("manager_id", ""))
+        primary_instructor = ft.Dropdown(
+            label="Primary instructor",
+            value=primary_value if primary_value in member_ids else "",
+            options=member_dropdown_options(),
+            width=310,
+            prefix_icon=ft.Icons.PERSON,
+        )
+        secondary_instructor = ft.Dropdown(
+            label="Secondary instructor",
+            value=secondary_value if secondary_value in member_ids else "",
+            options=member_dropdown_options(),
+            width=310,
+            prefix_icon=ft.Icons.PERSON_OUTLINE,
+        )
+        assigned_manager = ft.Dropdown(
+            label="Assigned manager",
+            value=manager_value if manager_value in manager_ids else "",
+            options=manager_options,
+            width=310,
+            prefix_icon=ft.Icons.BADGE,
+        )
         message = ft.Text(visible=False)
 
         def save_training(_: ft.ControlEvent) -> None:
@@ -107,6 +172,10 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                     profile,
                     start_date=selected_start_date,
                     training_phase=phase.value or "",
+                    primary_instructor_id=primary_instructor.value or "",
+                    secondary_instructor_id=secondary_instructor.value or "",
+                    manager_id=assigned_manager.value or "",
+                    team_members=members,
                 )
             except ValueError as error:
                 message.value = str(error)
@@ -156,6 +225,17 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                         ),
                         ft.Divider(),
                         ft.Row([start_date, phase], wrap=True, spacing=18),
+                        ft.Text(
+                            "Training assignments",
+                            size=18,
+                            weight=ft.FontWeight.BOLD,
+                            color=ft.Colors.INDIGO_900,
+                        ),
+                        ft.Row(
+                            [primary_instructor, secondary_instructor, assigned_manager],
+                            wrap=True,
+                            spacing=18,
+                        ),
                         ft.Row(
                             [
                                 ft.FilledButton(

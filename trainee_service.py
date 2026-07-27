@@ -54,15 +54,40 @@ def ensure_profile(
             "team_member_id": team_member_id,
             "start_date": "",
             "training_phase": TRAINING_PHASES[0],
+            "primary_instructor_id": "",
+            "secondary_instructor_id": "",
+            "manager_id": "",
         }
         profiles.append(profile)
     return profile
 
 
 def update_profile(
-    profile: dict[str, Any], *, start_date: str, training_phase: str
+    profile: dict[str, Any],
+    *,
+    start_date: str,
+    training_phase: str,
+    primary_instructor_id: str = "",
+    secondary_instructor_id: str = "",
+    manager_id: str = "",
+    team_members: list[dict[str, Any]] | None = None,
 ) -> None:
     """Update a trainee profile after validating its training details."""
     start_date, training_phase = validate_training_details(start_date, training_phase)
+    if team_members is not None:
+        member_ids = {str(member.get("id", "")) for member in team_members}
+        for instructor_id in (primary_instructor_id, secondary_instructor_id):
+            if instructor_id and instructor_id not in member_ids:
+                raise ValueError("Select a valid instructor.")
+        manager_ids = {
+            str(member.get("id", ""))
+            for member in team_members
+            if member.get("is_manager")
+        }
+        if manager_id and manager_id not in manager_ids:
+            raise ValueError("Assigned manager must have the Manager role.")
     profile["start_date"] = start_date
     profile["training_phase"] = training_phase
+    profile["primary_instructor_id"] = primary_instructor_id
+    profile["secondary_instructor_id"] = secondary_instructor_id
+    profile["manager_id"] = manager_id
