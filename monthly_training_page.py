@@ -17,8 +17,10 @@ from training_history_service import open_report_file
 
 def build_monthly_training_view(page: ft.Page) -> ft.View:
     """Build monthly training submission, history, and Excel reporting."""
-    members = load_records("team_members")
-    sessions = load_records("monthly_training")
+    loaded_members = load_records("team_members")
+    loaded_sessions = load_records("monthly_training")
+    members = loaded_members if isinstance(loaded_members, list) else []
+    sessions = loaded_sessions if isinstance(loaded_sessions, list) else []
     history_list = ft.Column(spacing=10)
     empty_history = ft.Text(
         "No monthly training sessions have been submitted.",

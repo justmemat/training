@@ -30,7 +30,53 @@ def main(page: ft.Page) -> None:
     def route_change(event: ft.RouteChangeEvent) -> None:
         view_builder = routes.get(event.route, build_landing_view)
         page.views.clear()
-        page.views.append(view_builder(page))
+        try:
+            page.views.append(view_builder(page))
+        except Exception as error:
+            # Keep navigation failures visible instead of leaving an empty grey page.
+            page.views.append(
+                ft.View(
+                    route=event.route,
+                    bgcolor=ft.Colors.INDIGO_50,
+                    appbar=ft.AppBar(
+                        leading=ft.IconButton(
+                            icon=ft.Icons.ARROW_BACK,
+                            on_click=lambda _: page.go("/"),
+                        ),
+                        title=ft.Text("Unable to open page"),
+                    ),
+                    controls=[
+                        ft.Container(
+                            content=ft.Column(
+                                [
+                                    ft.Icon(
+                                        ft.Icons.ERROR_OUTLINE,
+                                        size=54,
+                                        color=ft.Colors.RED_600,
+                                    ),
+                                    ft.Text(
+                                        "The page could not be loaded.",
+                                        size=24,
+                                        weight=ft.FontWeight.BOLD,
+                                    ),
+                                    ft.Text(str(error), selectable=True),
+                                    ft.FilledButton(
+                                        "Back to home",
+                                        icon=ft.Icons.HOME,
+                                        on_click=lambda _: page.go("/"),
+                                    ),
+                                ],
+                                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                                spacing=16,
+                            ),
+                            alignment=ft.alignment.center,
+                            padding=40,
+                        )
+                    ],
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    vertical_alignment=ft.MainAxisAlignment.CENTER,
+                )
+            )
         page.update()
 
     def view_pop(_: ft.ViewPopEvent) -> None:

@@ -44,7 +44,12 @@ def create_session_record(
 
 def sorted_sessions(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Return monthly training sessions newest first."""
-    return sorted(records, key=lambda record: str(record.get("date", "")), reverse=True)
+    valid_records = [record for record in records if isinstance(record, dict)]
+    return sorted(
+        valid_records,
+        key=lambda record: str(record.get("date", "")),
+        reverse=True,
+    )
 
 
 def generate_monthly_history_report(

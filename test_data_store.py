@@ -475,7 +475,7 @@ class MonthlyTrainingServiceTests(unittest.TestCase):
 
     def test_sessions_are_sorted_newest_first(self) -> None:
         sessions = sorted_sessions(
-            [{"date": "2026-07-01"}, {"date": "2026-08-01"}]
+            [{"date": "2026-07-01"}, "invalid", {"date": "2026-08-01"}]
         )
         self.assertEqual([session["date"] for session in sessions], ["2026-08-01", "2026-07-01"])
 
