@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 from typing import Iterable
 

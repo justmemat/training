@@ -6,12 +6,37 @@ A local Streamlit application for team rosters, individual trainee oversight, in
 
 Python 3.10 or newer is recommended.
 
+### Windows (easiest method)
+
+1. Install [Python 3](https://www.python.org/downloads/) if it is not already installed. On the installer screen, select **Add Python to PATH**.
+2. Download **all** repository files into one folder. Do not download only `main.py`.
+3. Double-click `run_app.bat`. The launcher works with folders containing spaces (including OneDrive folders), creates an isolated `.venv`, installs Streamlit and pandas from `requirements.txt`, and starts the app.
+4. Leave the command window open while using the app. The browser normally opens automatically; otherwise, open the local URL shown in that window.
+
+The application cannot be launched by typing `main.py`. Streamlit is an installed Python package and must start the script with `streamlit run`. If you see `ModuleNotFoundError: No module named 'streamlit'`, the dependencies have not yet been installed in the Python environment running the file; use `run_app.bat` or follow the manual commands below.
+
+### Manual setup (Windows Command Prompt)
+
+Open Command Prompt in the folder containing these files, then run:
+
+```bat
+py -3 -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+.venv\Scripts\python.exe -m streamlit run main.py
+```
+
+Using `.venv\Scripts\python.exe -m ...` ensures that `pip` and Streamlit use the same Python installation. If `py` is not recognized, replace `py -3` in the first command with `python`.
+
+### macOS or Linux
+
 ```bash
 python -m venv .venv
-source .venv/bin/activate              # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-streamlit run main.py
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m streamlit run main.py
 ```
+
+The canonical Streamlit command is `streamlit run main.py`; using `python -m streamlit run main.py` as shown above is equivalent and avoids selecting a Streamlit executable from a different Python installation.
 
 ## Storage and backups
 
