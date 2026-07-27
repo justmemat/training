@@ -14,7 +14,11 @@ from trainee_service import (
     format_start_date,
     update_profile,
 )
-from training_directory_service import add_business_days, build_guide_fields
+from training_directory_service import (
+    add_business_days,
+    build_guide_fields,
+    create_trainee_folders,
+)
 
 
 class DataStoreTests(unittest.TestCase):
@@ -206,6 +210,13 @@ class TraineeServiceTests(unittest.TestCase):
 
 
 class TrainingDirectoryServiceTests(unittest.TestCase):
+    def test_trainee_directory_contains_reports_subfolder(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            trainee_directory = create_trainee_folders(Path(directory), "JR")
+            self.assertEqual(trainee_directory, Path(directory) / "JR")
+            self.assertTrue(trainee_directory.is_dir())
+            self.assertTrue((trainee_directory / "Reports").is_dir())
+
     def test_business_day_calculation_skips_weekends(self) -> None:
         self.assertEqual(add_business_days(date(2026, 7, 24), 1), date(2026, 7, 27))
         self.assertEqual(add_business_days(date(2026, 7, 27), 30), date(2026, 9, 7))

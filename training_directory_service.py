@@ -31,6 +31,14 @@ def full_name(member: dict[str, Any] | None) -> str:
     return f"{member.get('first_name', '')} {member.get('last_name', '')}".strip()
 
 
+def create_trainee_folders(output_root: Path, initials: str) -> Path:
+    """Create the trainee directory and its required Reports subfolder."""
+    output_directory = output_root / initials
+    output_directory.mkdir(parents=True, exist_ok=True)
+    (output_directory / "Reports").mkdir(exist_ok=True)
+    return output_directory
+
+
 def build_guide_fields(
     trainee: dict[str, Any],
     profile: dict[str, Any],
@@ -87,8 +95,7 @@ def create_training_directory(
     if not initials:
         raise ValueError("The trainee must have operating initials.")
 
-    output_directory = output_root / initials
-    output_directory.mkdir(parents=True, exist_ok=True)
+    output_directory = create_trainee_folders(output_root, initials)
     output_path = output_directory / (
         f"STARS Adaptation Specialist Training Guide - {initials}.pdf"
     )
