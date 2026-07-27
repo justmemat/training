@@ -12,7 +12,7 @@ from trainee_service import (
     format_start_date,
     update_profile,
 )
-from training_directory_service import create_training_directory
+from training_directory_service import create_training_directory, trainee_directory_exists
 
 
 def build_trainees_view(page: ft.Page) -> ft.View:
@@ -166,6 +166,12 @@ def build_trainees_view(page: ft.Page) -> ft.View:
             prefix_icon=ft.Icons.BADGE,
         )
         message = ft.Text(visible=False)
+        creation_progress = ft.ProgressBar(
+            visible=False,
+            color=ft.Colors.INDIGO_600,
+            bgcolor=ft.Colors.INDIGO_100,
+        )
+        directory_already_exists = trainee_directory_exists(member)
 
         def update_training_profile() -> bool:
             try:
@@ -198,6 +204,12 @@ def build_trainees_view(page: ft.Page) -> ft.View:
         def build_training_directory(_: ft.ControlEvent) -> None:
             if not update_training_profile():
                 return
+            create_directory_button.disabled = True
+            creation_progress.visible = True
+            message.value = "Creating training directory and populating the guide..."
+            message.color = ft.Colors.INDIGO_700
+            message.visible = True
+            details.update()
             try:
                 output_path = create_training_directory(member, profile, members)
             except ModuleNotFoundError as error:
@@ -210,18 +222,36 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                 )
                 message.color = ft.Colors.RED_700
                 message.visible = True
+                creation_progress.visible = False
+                create_directory_button.disabled = trainee_directory_exists(member)
                 details.update()
                 return
             except (FileNotFoundError, OSError, ValueError) as error:
                 message.value = str(error)
                 message.color = ft.Colors.RED_700
                 message.visible = True
+                creation_progress.visible = False
+                create_directory_button.disabled = trainee_directory_exists(member)
                 details.update()
                 return
             message.value = f"Training directory created: {output_path}"
             message.color = ft.Colors.GREEN_700
             message.visible = True
+            creation_progress.visible = False
+            create_directory_button.disabled = True
             details.update()
+
+        create_directory_button = ft.OutlinedButton(
+            "Create training directory",
+            icon=ft.Icons.CREATE_NEW_FOLDER,
+            disabled=directory_already_exists,
+            tooltip=(
+                "A directory already exists for these operating initials."
+                if directory_already_exists
+                else "Create the trainee directory and populated training guide"
+            ),
+            on_click=build_training_directory,
+        )
 
         details.controls = [
             ft.Container(
@@ -277,15 +307,12 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                                     icon=ft.Icons.SAVE,
                                     on_click=save_training,
                                 ),
-                                ft.OutlinedButton(
-                                    "Create training directory",
-                                    icon=ft.Icons.CREATE_NEW_FOLDER,
-                                    on_click=build_training_directory,
-                                ),
+                                create_directory_button,
                                 message,
                             ],
                             wrap=True,
                         ),
+                        creation_progress,
                     ],
                     spacing=18,
                 ),

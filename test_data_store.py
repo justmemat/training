@@ -18,6 +18,7 @@ from training_directory_service import (
     add_business_days,
     build_guide_fields,
     create_trainee_folders,
+    trainee_directory_exists,
 )
 
 
@@ -216,6 +217,13 @@ class TrainingDirectoryServiceTests(unittest.TestCase):
             self.assertEqual(trainee_directory, Path(directory) / "JR")
             self.assertTrue(trainee_directory.is_dir())
             self.assertTrue((trainee_directory / "Reports").is_dir())
+            self.assertTrue(
+                trainee_directory_exists(
+                    {"operating_initials": "jr"}, Path(directory)
+                )
+            )
+            with self.assertRaisesRegex(FileExistsError, "already exists"):
+                create_trainee_folders(Path(directory), "JR")
 
     def test_business_day_calculation_skips_weekends(self) -> None:
         self.assertEqual(add_business_days(date(2026, 7, 24), 1), date(2026, 7, 27))

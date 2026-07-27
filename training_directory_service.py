@@ -34,9 +34,22 @@ def full_name(member: dict[str, Any] | None) -> str:
 def create_trainee_folders(output_root: Path, initials: str) -> Path:
     """Create the trainee directory and its required Reports subfolder."""
     output_directory = output_root / initials
-    output_directory.mkdir(parents=True, exist_ok=True)
-    (output_directory / "Reports").mkdir(exist_ok=True)
+    try:
+        output_directory.mkdir(parents=True, exist_ok=False)
+    except FileExistsError as error:
+        raise FileExistsError(
+            f"A training directory already exists for {initials}: {output_directory}"
+        ) from error
+    (output_directory / "Reports").mkdir()
     return output_directory
+
+
+def trainee_directory_exists(
+    trainee: dict[str, Any], output_root: Path = TRAINING_DIRECTORY_ROOT
+) -> bool:
+    """Return whether the trainee's operating-initials directory already exists."""
+    initials = str(trainee.get("operating_initials", "")).strip().upper()
+    return bool(initials) and (output_root / initials).is_dir()
 
 
 def build_guide_fields(
@@ -87,13 +100,17 @@ def create_training_directory(
     output_root: Path = TRAINING_DIRECTORY_ROOT,
 ) -> Path:
     """Fill the PDF template and save it beneath the trainee's initials."""
-    from pypdf import PdfReader, PdfWriter
-
     if not template_path.is_file():
         raise FileNotFoundError(f"Training guide template was not found: {template_path}")
     initials = str(trainee.get("operating_initials", "")).strip().upper()
     if not initials:
         raise ValueError("The trainee must have operating initials.")
+    if trainee_directory_exists(trainee, output_root):
+        raise FileExistsError(
+            f"A training directory already exists for {initials}: {output_root / initials}"
+        )
+
+    from pypdf import PdfReader, PdfWriter
 
     output_directory = create_trainee_folders(output_root, initials)
     output_path = output_directory / (
