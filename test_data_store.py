@@ -21,7 +21,11 @@ from training_directory_service import (
     trainee_directory_exists,
 )
 from training_report_service import build_report_fields
-from history_report_service import business_days_used, instructor_percentages
+from history_report_service import (
+    business_days_used,
+    instructor_percentages,
+    training_end_date,
+)
 from training_history_service import (
     create_history_record,
     open_report_file,
@@ -408,6 +412,9 @@ class TrainingHistoryServiceTests(unittest.TestCase):
 
 
 class HistoryReportServiceTests(unittest.TestCase):
+    def test_training_end_date_is_90_business_days_after_start(self) -> None:
+        self.assertEqual(training_end_date(date(2026, 7, 27)), date(2026, 11, 30))
+
     def test_business_days_used_excludes_start_and_weekends(self) -> None:
         self.assertEqual(
             business_days_used(date(2026, 7, 24), date(2026, 7, 27)), 1

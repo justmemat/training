@@ -4,7 +4,11 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
-from training_directory_service import TRAINING_DIRECTORY_ROOT, full_name
+from training_directory_service import (
+    TRAINING_DIRECTORY_ROOT,
+    add_business_days,
+    full_name,
+)
 from training_history_service import trainee_history
 
 
@@ -19,6 +23,11 @@ def business_days_used(start: date, through: date) -> int:
             used += 1
         current += timedelta(days=1)
     return used
+
+
+def training_end_date(start: date) -> date:
+    """Return the end of the trainee's 90-business-day training allotment."""
+    return add_business_days(start, 90)
 
 
 def instructor_percentages(
@@ -74,6 +83,7 @@ def generate_history_report(
         (member for member in team_members if member.get("is_training_lead")), None
     )
     used_days = business_days_used(start, today)
+    end_date = training_end_date(start)
 
     workbook = Workbook()
     sheet = workbook.active
@@ -93,10 +103,11 @@ def generate_history_report(
     sheet["A3"] = "Start Date"
     sheet["B3"] = start
     sheet["B3"].number_format = "dd mmm yyyy"
-    sheet["A4"] = "Business Days Used"
-    sheet["B4"] = used_days
-    sheet["A5"] = "Business Days Allotted"
-    sheet["B5"] = 90
+    sheet["A4"] = "End Date"
+    sheet["B4"] = end_date
+    sheet["B4"].number_format = "dd mmm yyyy"
+    sheet["A5"] = "Total Days Training"
+    sheet["B5"] = used_days
     sheet["A6"] = "Total Training Time Used"
     sheet["B6"] = used_days / 90
     sheet["B6"].number_format = "0.0%"
@@ -135,17 +146,16 @@ def generate_history_report(
         percentage_row += 1
 
     history_start = percentage_row + 1
-    sheet.merge_cells(start_row=history_start, start_column=1, end_row=history_start, end_column=3)
+    sheet.merge_cells(start_row=history_start, start_column=1, end_row=history_start, end_column=2)
     sheet.cell(history_start, 1, "Days Trained and Instructor").fill = section_fill
     sheet.cell(history_start, 1).font = Font(bold=True)
-    sheet.append(["Training Date", "Instructor", "Report File"])
+    sheet.append(["Training Date", "Instructor"])
     for entry in entries:
         entry_date = date.fromisoformat(str(entry.get("date", "")))
         sheet.append(
             [
                 entry_date,
                 full_name(by_id.get(str(entry.get("instructor_id", "")))) or "Unknown",
-                str(entry.get("file_name", "")),
             ]
         )
         sheet.cell(sheet.max_row, 1).number_format = "dd mmm yyyy"
