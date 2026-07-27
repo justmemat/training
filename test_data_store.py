@@ -21,6 +21,7 @@ from training_directory_service import (
     trainee_directory_exists,
 )
 from training_report_service import build_report_fields
+from training_history_service import create_history_record, trainee_history
 
 
 class DataStoreTests(unittest.TestCase):
@@ -338,6 +339,28 @@ class TrainingReportServiceTests(unittest.TestCase):
                 training_summary="Summary",
                 instructor_comments="Comments",
             )
+
+
+class TrainingHistoryServiceTests(unittest.TestCase):
+    def test_history_records_date_and_selected_instructor(self) -> None:
+        record = create_history_record(
+            trainee_id="trainee-1",
+            instructor_id="instructor-1",
+            report_date=date(2026, 7, 27),
+            report_path=r"T:\Reports\report.pdf",
+        )
+        self.assertEqual(record["trainee_id"], "trainee-1")
+        self.assertEqual(record["instructor_id"], "instructor-1")
+        self.assertEqual(record["date"], "2026-07-27")
+
+    def test_trainee_history_is_filtered_and_newest_first(self) -> None:
+        records = [
+            {"trainee_id": "one", "date": "2026-07-01"},
+            {"trainee_id": "two", "date": "2026-08-01"},
+            {"trainee_id": "one", "date": "2026-07-27"},
+        ]
+        history = trainee_history(records, "one")
+        self.assertEqual([entry["date"] for entry in history], ["2026-07-27", "2026-07-01"])
 
 
 if __name__ == "__main__":

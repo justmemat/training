@@ -15,6 +15,7 @@ DATA_FILES: dict[str, str] = {
     "team_members": "team_members.json",
     "trainees": "trainees.json",
     "monthly_training": "monthly_training.json",
+    "training_history": "training_history.json",
 }
 
 

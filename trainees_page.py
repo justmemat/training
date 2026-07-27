@@ -1,6 +1,6 @@
 """Trainee assignment and training-information page."""
 
-from datetime import datetime
+from datetime import date, datetime
 
 import flet as ft
 
@@ -13,6 +13,7 @@ from trainee_service import (
     update_profile,
 )
 from training_directory_service import create_training_directory, trainee_directory_exists
+from training_history_service import create_history_record, trainee_history
 from training_report_service import create_training_report
 
 
@@ -20,6 +21,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
     """Build the trainee selector and selected trainee's training details."""
     members = load_records("team_members")
     profiles = load_records("trainees")
+    history_records = load_records("training_history")
     trainee_selector = ft.Dropdown(
         label="Select a trainee", width=420, prefix_icon=ft.Icons.SCHOOL
     )
@@ -255,6 +257,62 @@ def build_trainees_view(page: ft.Page) -> ft.View:
             on_click=build_training_directory,
         )
 
+        history_list = ft.Column(spacing=8)
+        history_empty = ft.Text(
+            "No daily training reports have been recorded.",
+            color=ft.Colors.GREY_600,
+            italic=True,
+        )
+
+        def render_history() -> None:
+            entries = trainee_history(history_records, str(member.get("id", "")))
+            history_empty.visible = not entries
+            history_list.controls = []
+            for entry in entries:
+                instructor_member = next(
+                    (
+                        item
+                        for item in members
+                        if item.get("id") == entry.get("instructor_id")
+                    ),
+                    None,
+                )
+                instructor_name = (
+                    f"{instructor_member.get('first_name', '')} "
+                    f"{instructor_member.get('last_name', '')} "
+                    f"({instructor_member.get('operating_initials', '')})"
+                    if instructor_member
+                    else "Unknown instructor"
+                )
+                history_list.controls.append(
+                    ft.Container(
+                        content=ft.Row(
+                            [
+                                ft.Icon(ft.Icons.DESCRIPTION, color=ft.Colors.INDIGO_500),
+                                ft.Column(
+                                    [
+                                        ft.Text(
+                                            format_start_date(str(entry.get("date", ""))),
+                                            weight=ft.FontWeight.BOLD,
+                                        ),
+                                        ft.Text(
+                                            f"Instructor: {instructor_name}",
+                                            color=ft.Colors.GREY_700,
+                                        ),
+                                    ],
+                                    spacing=2,
+                                    expand=True,
+                                ),
+                            ]
+                        ),
+                        bgcolor=ft.Colors.INDIGO_50,
+                        border_radius=8,
+                        padding=12,
+                    )
+                )
+
+        render_history()
+
         def open_daily_report_dialog() -> None:
             if not update_training_profile():
                 return
@@ -293,6 +351,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                 report_message.visible = True
                 dialog.update()
                 try:
+                    generated_on = date.today()
                     output_path = create_training_report(
                         member,
                         profile,
@@ -300,7 +359,17 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                         instructor_id=instructor.value or "",
                         training_summary=training_summary.value or "",
                         instructor_comments=instructor_comments.value or "",
+                        report_date=generated_on,
                     )
+                    history_records.append(
+                        create_history_record(
+                            trainee_id=str(member.get("id", "")),
+                            instructor_id=instructor.value or "",
+                            report_date=generated_on,
+                            report_path=str(output_path),
+                        )
+                    )
+                    save_records("training_history", history_records)
                 except ModuleNotFoundError as error:
                     if error.name != "pypdf":
                         raise
@@ -315,6 +384,8 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                     report_message.color = ft.Colors.GREEN_700
                     report_progress.visible = False
                     generate_button.disabled = False
+                    render_history()
+                    details.update()
                     dialog.update()
                     return
                 report_message.color = ft.Colors.RED_700
@@ -528,6 +599,15 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                             wrap=True,
                         ),
                         creation_progress,
+                        ft.Divider(height=28),
+                        ft.Text(
+                            "Training History",
+                            size=20,
+                            weight=ft.FontWeight.BOLD,
+                            color=ft.Colors.INDIGO_900,
+                        ),
+                        history_empty,
+                        history_list,
                     ],
                     spacing=18,
                 ),
