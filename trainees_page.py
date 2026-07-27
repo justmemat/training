@@ -598,6 +598,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                 output_path = generate_history_report(
                     member, profile, members, history_records
                 )
+                open_report_file({"report_path": str(output_path)})
             except ModuleNotFoundError as error:
                 if error.name != "openpyxl":
                     raise
@@ -610,7 +611,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                 message.value = str(error)
                 message.color = ft.Colors.RED_700
             else:
-                message.value = f"History report created: {output_path}"
+                message.value = f"History report created and opened: {output_path}"
                 message.color = ft.Colors.GREEN_700
             history_report_progress.visible = False
             history_report_button.disabled = not trainee_directory_exists(member)
