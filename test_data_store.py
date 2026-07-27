@@ -21,6 +21,7 @@ from training_directory_service import (
     trainee_directory_exists,
 )
 from training_report_service import build_report_fields
+from history_report_service import business_days_used, instructor_percentages
 from training_history_service import (
     create_history_record,
     open_report_file,
@@ -404,6 +405,29 @@ class TrainingHistoryServiceTests(unittest.TestCase):
             )
             self.assertEqual(result, report)
             self.assertEqual(opened, [str(report)])
+
+
+class HistoryReportServiceTests(unittest.TestCase):
+    def test_business_days_used_excludes_start_and_weekends(self) -> None:
+        self.assertEqual(
+            business_days_used(date(2026, 7, 24), date(2026, 7, 27)), 1
+        )
+        self.assertEqual(
+            business_days_used(date(2026, 7, 27), date(2026, 7, 27)), 0
+        )
+
+    def test_instructor_percentages_use_selected_trainees_history(self) -> None:
+        percentages = instructor_percentages(
+            [
+                {"trainee_id": "one", "instructor_id": "a", "date": "2026-07-01"},
+                {"trainee_id": "one", "instructor_id": "a", "date": "2026-07-02"},
+                {"trainee_id": "one", "instructor_id": "b", "date": "2026-07-03"},
+                {"trainee_id": "two", "instructor_id": "b", "date": "2026-07-04"},
+            ],
+            "one",
+        )
+        self.assertAlmostEqual(percentages["a"], 2 / 3)
+        self.assertAlmostEqual(percentages["b"], 1 / 3)
 
 
 if __name__ == "__main__":

@@ -19,6 +19,7 @@ from training_history_service import (
     open_report_file,
     trainee_history,
 )
+from history_report_service import generate_history_report
 from training_report_service import create_training_report
 
 
@@ -180,6 +181,11 @@ def build_trainees_view(page: ft.Page) -> ft.View:
             bgcolor=ft.Colors.INDIGO_100,
         )
         directory_already_exists = trainee_directory_exists(member)
+        history_report_progress = ft.ProgressBar(
+            visible=False,
+            color=ft.Colors.INDIGO_600,
+            bgcolor=ft.Colors.INDIGO_100,
+        )
 
         def update_training_profile() -> bool:
             try:
@@ -248,6 +254,8 @@ def build_trainees_view(page: ft.Page) -> ft.View:
             create_directory_button.disabled = True
             daily_report_button.disabled = False
             daily_report_button.tooltip = "Create a populated daily training report"
+            history_report_button.disabled = False
+            history_report_button.tooltip = "Create or update the Excel training history report"
             details.update()
 
         create_directory_button = ft.OutlinedButton(
@@ -579,6 +587,47 @@ def build_trainees_view(page: ft.Page) -> ft.View:
             "Edit training information", icon=ft.Icons.EDIT, on_click=begin_edit
         )
 
+        def build_history_report(_: ft.ControlEvent) -> None:
+            history_report_button.disabled = True
+            history_report_progress.visible = True
+            message.value = "Creating or updating the Excel history report..."
+            message.color = ft.Colors.INDIGO_700
+            message.visible = True
+            details.update()
+            try:
+                output_path = generate_history_report(
+                    member, profile, members, history_records
+                )
+            except ModuleNotFoundError as error:
+                if error.name != "openpyxl":
+                    raise
+                message.value = (
+                    "Excel support is not installed. Run: "
+                    "python -m pip install -r requirements.txt"
+                )
+                message.color = ft.Colors.RED_700
+            except (FileNotFoundError, OSError, ValueError) as error:
+                message.value = str(error)
+                message.color = ft.Colors.RED_700
+            else:
+                message.value = f"History report created: {output_path}"
+                message.color = ft.Colors.GREEN_700
+            history_report_progress.visible = False
+            history_report_button.disabled = not trainee_directory_exists(member)
+            details.update()
+
+        history_report_button = ft.OutlinedButton(
+            "Generate History Report",
+            icon=ft.Icons.TABLE_VIEW,
+            disabled=not directory_already_exists,
+            tooltip=(
+                "Create the trainee's training directory first."
+                if not directory_already_exists
+                else "Create or update the Excel training history report"
+            ),
+            on_click=build_history_report,
+        )
+
         details.controls = [
             ft.Container(
                 content=ft.Column(
@@ -621,11 +670,13 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                                 edit_button,
                                 create_directory_button,
                                 daily_report_button,
+                                history_report_button,
                                 message,
                             ],
                             wrap=True,
                         ),
                         creation_progress,
+                        history_report_progress,
                         ft.Divider(height=28),
                         ft.Text(
                             "Training History",
