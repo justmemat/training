@@ -32,8 +32,6 @@ def build_report_fields(
     comments = instructor_comments.strip()
     if not summary:
         raise ValueError("Enter a Training Summary.")
-    if not comments:
-        raise ValueError("Enter Instructor Comments.")
 
     training_lead = next(
         (member for member in team_members if member.get("is_training_lead")), None
@@ -42,7 +40,7 @@ def build_report_fields(
         raise ValueError("Assign a Training Lead before creating a training report.")
     effective_date = report_date or date.today()
     trainee_initials = str(trainee.get("operating_initials", "")).upper()
-    return {
+    fields = {
         "Trainees_Name": full_name(trainee),
         "Trainees_Initials": trainee_initials,
         "Date": format_start_date(effective_date.isoformat()),
@@ -54,11 +52,15 @@ def build_report_fields(
         ),
         "Training_Lead": full_name(training_lead),
         "Training_Summary": summary,
-        "Instructor_Comments": comments,
         "Instructors_Initials": str(instructor.get("operating_initials", "")).upper(),
         "Trainees_Initials1": trainee_initials,
         "Training_Lead1": str(training_lead.get("operating_initials", "")).upper(),
     }
+    # Omitting the field preserves any existing template content when no comments
+    # were entered, rather than explicitly replacing it with a blank value.
+    if comments:
+        fields["Instructor_Comments"] = comments
+    return fields
 
 
 def _available_report_path(reports_directory: Path, initials: str, day: date) -> Path:

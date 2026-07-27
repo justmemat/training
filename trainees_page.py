@@ -16,7 +16,7 @@ from trainee_service import (
 from training_directory_service import create_training_directory, trainee_directory_exists
 from training_history_service import (
     create_history_record,
-    report_file_uri,
+    open_report_file,
     trainee_history,
 )
 from training_report_service import create_training_report
@@ -292,12 +292,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
 
                 def open_report(_: ft.ControlEvent, history_entry: dict = entry) -> None:
                     try:
-                        report_path = str(history_entry.get("report_path", ""))
-                        if not report_path or not Path(report_path).is_file():
-                            raise FileNotFoundError(
-                                f"The saved report could not be found: {report_path}"
-                            )
-                        page.launch_url(report_file_uri(history_entry))
+                        open_report_file(history_entry)
                     except (FileNotFoundError, OSError, ValueError) as error:
                         page.open(ft.SnackBar(ft.Text(str(error))))
 
@@ -362,7 +357,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                 width=560,
             )
             instructor_comments = ft.TextField(
-                label="Instructor Comments",
+                label="Instructor Comments (optional)",
                 multiline=True,
                 min_lines=4,
                 max_lines=8,

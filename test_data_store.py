@@ -23,6 +23,7 @@ from training_directory_service import (
 from training_report_service import build_report_fields
 from training_history_service import (
     create_history_record,
+    open_report_file,
     report_file_uri,
     trainee_history,
 )
@@ -344,6 +345,23 @@ class TrainingReportServiceTests(unittest.TestCase):
                 instructor_comments="Comments",
             )
 
+    def test_blank_instructor_comments_leave_pdf_field_unchanged(self) -> None:
+        trainee = {"first_name": "Jamie", "operating_initials": "JR"}
+        members = [
+            {"id": "instructor", "operating_initials": "II"},
+            {"id": "lead", "is_training_lead": True, "operating_initials": "LL"},
+        ]
+        fields = build_report_fields(
+            trainee,
+            {},
+            members,
+            instructor_id="instructor",
+            training_summary="Required summary",
+            instructor_comments="   ",
+        )
+        self.assertNotIn("Instructor_Comments", fields)
+        self.assertEqual(fields["Training_Summary"], "Required summary")
+
 
 class TrainingHistoryServiceTests(unittest.TestCase):
     def test_history_records_date_and_selected_instructor(self) -> None:
@@ -375,6 +393,17 @@ class TrainingHistoryServiceTests(unittest.TestCase):
             uri = report_file_uri({"report_path": str(report)})
             self.assertTrue(uri.startswith("file:"))
             self.assertIn("daily%20report.pdf", uri)
+
+    def test_report_file_uses_operating_system_opener(self) -> None:
+        opened: list[str] = []
+        with tempfile.TemporaryDirectory() as directory:
+            report = Path(directory) / "daily report.pdf"
+            report.touch()
+            result = open_report_file(
+                {"report_path": str(report)}, opener=opened.append
+            )
+            self.assertEqual(result, report)
+            self.assertEqual(opened, [str(report)])
 
 
 if __name__ == "__main__":
