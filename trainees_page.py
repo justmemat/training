@@ -13,6 +13,7 @@ from trainee_service import (
     update_profile,
 )
 from training_directory_service import create_training_directory, trainee_directory_exists
+from training_report_service import create_training_report
 
 
 def build_trainees_view(page: ft.Page) -> ft.View:
@@ -239,6 +240,8 @@ def build_trainees_view(page: ft.Page) -> ft.View:
             message.visible = True
             creation_progress.visible = False
             create_directory_button.disabled = True
+            daily_report_button.disabled = False
+            daily_report_button.tooltip = "Create a populated daily training report"
             details.update()
 
         create_directory_button = ft.OutlinedButton(
@@ -251,6 +254,113 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                 else "Create the trainee directory and populated training guide"
             ),
             on_click=build_training_directory,
+        )
+
+        def open_daily_report_dialog() -> None:
+            if not update_training_profile():
+                return
+            instructor = ft.Dropdown(
+                label="Instructor",
+                options=member_dropdown_options()[1:],
+                width=420,
+                prefix_icon=ft.Icons.PERSON,
+            )
+            training_summary = ft.TextField(
+                label="Training Summary",
+                multiline=True,
+                min_lines=4,
+                max_lines=8,
+                width=560,
+            )
+            instructor_comments = ft.TextField(
+                label="Instructor Comments",
+                multiline=True,
+                min_lines=4,
+                max_lines=8,
+                width=560,
+            )
+            report_message = ft.Text(visible=False)
+            report_progress = ft.ProgressBar(
+                visible=False,
+                color=ft.Colors.INDIGO_600,
+                bgcolor=ft.Colors.INDIGO_100,
+            )
+
+            def create_report(_: ft.ControlEvent) -> None:
+                generate_button.disabled = True
+                report_progress.visible = True
+                report_message.value = "Creating and saving the daily training report..."
+                report_message.color = ft.Colors.INDIGO_700
+                report_message.visible = True
+                dialog.update()
+                try:
+                    output_path = create_training_report(
+                        member,
+                        profile,
+                        members,
+                        instructor_id=instructor.value or "",
+                        training_summary=training_summary.value or "",
+                        instructor_comments=instructor_comments.value or "",
+                    )
+                except ModuleNotFoundError as error:
+                    if error.name != "pypdf":
+                        raise
+                    report_message.value = (
+                        "PDF support is not installed. Run: "
+                        "python -m pip install -r requirements.txt"
+                    )
+                except (FileNotFoundError, OSError, ValueError) as error:
+                    report_message.value = str(error)
+                else:
+                    report_message.value = f"Daily training report created: {output_path}"
+                    report_message.color = ft.Colors.GREEN_700
+                    report_progress.visible = False
+                    generate_button.disabled = False
+                    dialog.update()
+                    return
+                report_message.color = ft.Colors.RED_700
+                report_progress.visible = False
+                generate_button.disabled = False
+                dialog.update()
+
+            generate_button = ft.FilledButton(
+                "Create report", icon=ft.Icons.PICTURE_AS_PDF, on_click=create_report
+            )
+            dialog = ft.AlertDialog(
+                modal=True,
+                title=ft.Text("Add daily training report"),
+                content=ft.Container(
+                    content=ft.Column(
+                        [
+                            instructor,
+                            training_summary,
+                            instructor_comments,
+                            report_message,
+                            report_progress,
+                        ],
+                        tight=True,
+                        spacing=14,
+                        scroll=ft.ScrollMode.AUTO,
+                    ),
+                    width=580,
+                ),
+                actions=[
+                    ft.TextButton("Close", on_click=lambda _: page.close(dialog)),
+                    generate_button,
+                ],
+            )
+            page.open(dialog)
+
+        daily_report_button = ft.OutlinedButton(
+            "Add daily training report",
+            icon=ft.Icons.NOTE_ADD,
+            disabled=not directory_already_exists,
+            tooltip=(
+                "Create the trainee's training directory first."
+                if not directory_already_exists
+                else "Create a populated daily training report"
+            ),
+            on_click=lambda _: open_daily_report_dialog(),
         )
 
         details.controls = [
@@ -308,6 +418,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                                     on_click=save_training,
                                 ),
                                 create_directory_button,
+                                daily_report_button,
                                 message,
                             ],
                             wrap=True,

@@ -20,6 +20,7 @@ from training_directory_service import (
     create_trainee_folders,
     trainee_directory_exists,
 )
+from training_report_service import build_report_fields
 
 
 class DataStoreTests(unittest.TestCase):
@@ -273,6 +274,69 @@ class TrainingDirectoryServiceTests(unittest.TestCase):
     def test_pypdf_is_declared_as_an_application_dependency(self) -> None:
         requirements = Path("requirements.txt").read_text(encoding="utf-8")
         self.assertIn("pypdf", requirements)
+
+
+class TrainingReportServiceTests(unittest.TestCase):
+    def test_daily_report_fields_are_built_from_program_and_user_data(self) -> None:
+        trainee = {
+            "id": "trainee",
+            "first_name": "Jamie",
+            "last_name": "Rivera",
+            "operating_initials": "JR",
+        }
+        members = [
+            trainee,
+            {
+                "id": "primary",
+                "first_name": "Pat",
+                "last_name": "Primary",
+                "operating_initials": "PP",
+            },
+            {"id": "secondary", "first_name": "Sam", "last_name": "Second"},
+            {
+                "id": "lead",
+                "first_name": "Lee",
+                "last_name": "Lead",
+                "operating_initials": "LL",
+                "is_training_lead": True,
+            },
+        ]
+        fields = build_report_fields(
+            trainee,
+            {
+                "primary_instructor_id": "primary",
+                "secondary_instructor_id": "secondary",
+            },
+            members,
+            instructor_id="primary",
+            training_summary="Completed lesson one.",
+            instructor_comments="Good progress.",
+            report_date=date(2026, 7, 27),
+        )
+        self.assertEqual(fields["Trainees_Name"], "Jamie Rivera")
+        self.assertEqual(fields["Trainees_Initials"], "JR")
+        self.assertEqual(fields["Date"], "27 Jul 2026")
+        self.assertEqual(fields["Primary_Instructor"], "Pat Primary")
+        self.assertEqual(fields["Secondary_Instructor"], "Sam Second")
+        self.assertEqual(fields["Training_Lead"], "Lee Lead")
+        self.assertEqual(fields["Training_Summary"], "Completed lesson one.")
+        self.assertEqual(fields["Instructor_Comments"], "Good progress.")
+        self.assertEqual(fields["Instructor_Initials"], "PP")
+        self.assertEqual(fields["Trainees_Initials1"], "JR")
+        self.assertEqual(fields["Training_Lead1"], "LL")
+
+    def test_report_requires_summary_comments_and_valid_instructor(self) -> None:
+        trainee = {"first_name": "Jamie", "operating_initials": "JR"}
+        lead = {"id": "lead", "is_training_lead": True}
+        with self.assertRaisesRegex(ValueError, "valid instructor"):
+            build_report_fields(
+                trainee,
+                {},
+                [lead],
+                instructor_id="missing",
+                training_summary="Summary",
+                instructor_comments="Comments",
+            )
 
 
 if __name__ == "__main__":
