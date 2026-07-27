@@ -209,7 +209,7 @@ def build_team_members_view(page: ft.Page) -> ft.View:
             leading=ft.IconButton(
                 icon=ft.Icons.ARROW_BACK,
                 tooltip="Back to home",
-                on_click=lambda _: page.go("/"),
+                on_click=lambda _: page.push_route("/"),
             ),
             title=ft.Text("Team Members"),
             bgcolor=ft.Colors.WHITE,

@@ -41,7 +41,7 @@ def main(page: ft.Page) -> None:
                     appbar=ft.AppBar(
                         leading=ft.IconButton(
                             icon=ft.Icons.ARROW_BACK,
-                            on_click=lambda _: page.go("/"),
+                            on_click=lambda _: page.push_route("/"),
                         ),
                         title=ft.Text("Unable to open page"),
                     ),
@@ -63,7 +63,7 @@ def main(page: ft.Page) -> None:
                                     ft.FilledButton(
                                         "Back to home",
                                         icon=ft.Icons.HOME,
-                                        on_click=lambda _: page.go("/"),
+                                        on_click=lambda _: page.push_route("/"),
                                     ),
                                 ],
                                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -80,12 +80,12 @@ def main(page: ft.Page) -> None:
         page.update()
 
     def view_pop(_: ft.ViewPopEvent) -> None:
-        page.go("/")
+        page.push_route("/")
 
     page.on_route_change = route_change
     page.on_view_pop = view_pop
-    page.go(page.route or "/")
+    page.push_route(page.route or "/")
 
 
 if __name__ == "__main__":
-    ft.app(target=main)
+    ft.run(main)

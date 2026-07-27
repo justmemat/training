@@ -20,7 +20,7 @@ def _navigation_card(
                 ft.FilledButton(
                     "Open",
                     icon=ft.Icons.ARROW_FORWARD,
-                    on_click=lambda _, destination=route: page.go(destination),
+                    on_click=lambda _, destination=route: page.push_route(destination),
                 ),
             ],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,

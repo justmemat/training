@@ -25,13 +25,13 @@ py main.py
 The PDF-generation feature requires `pypdf`. Installing `requirements.txt` installs
 both Flet and pypdf and is preferred over installing packages one at a time.
 
-The application currently targets Flet 0.28.3. Newer Flet releases changed the
-routing and file-picker APIs used by this application. If another Flet version is
-installed, restore the compatible version and restart the app from the same
-application directory:
+The application targets Flet 0.80.0 and uses its current routing and asynchronous
+file-picker APIs. If another Flet version is installed, restore the matching Flet
+and Flet Desktop packages and restart the app from the same application directory:
 
 ```bat
-python -m pip install --force-reinstall -r requirements.txt
+python -m pip uninstall -y flet flet-desktop
+python -m pip install -r requirements.txt
 python main.py
 ```
 

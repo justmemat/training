@@ -128,16 +128,17 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
         ]
         error_text = ft.Text(color=ft.Colors.RED_700, visible=False)
 
-        def file_selected(event: ft.FilePickerResultEvent) -> None:
+        file_picker = ft.FilePicker()
+        page.services.append(file_picker)
+
+        async def select_file(_: ft.ControlEvent) -> None:
             nonlocal selected_path
-            if event.files:
-                selected_path = event.files[0].path
+            selected_files = await file_picker.pick_files(allow_multiple=False)
+            if selected_files:
+                selected_path = selected_files[0].path
                 file_text.value = selected_path
                 file_text.color = ft.Colors.GREY_800
                 dialog.update()
-
-        file_picker = ft.FilePicker(on_result=file_selected)
-        page.overlay.append(file_picker)
 
         def date_selected(_: ft.ControlEvent) -> None:
             nonlocal selected_date
@@ -186,7 +187,7 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
                         ft.OutlinedButton(
                             "Select presented file",
                             icon=ft.Icons.UPLOAD_FILE,
-                            on_click=lambda _: file_picker.pick_files(allow_multiple=False),
+                            on_click=select_file,
                         ),
                         file_text,
                         date_text,
@@ -292,7 +293,7 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
             leading=ft.IconButton(
                 icon=ft.Icons.ARROW_BACK,
                 tooltip="Back to home",
-                on_click=lambda _: page.go("/"),
+                on_click=lambda _: page.push_route("/"),
             ),
             title=ft.Text("Monthly Training"),
             bgcolor=ft.Colors.WHITE,
