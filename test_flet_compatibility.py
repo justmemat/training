@@ -122,6 +122,40 @@ class FletCompatibilityTests(unittest.TestCase):
         )
         self.assertEqual(dialog.actions[1].content, "Submit")
 
+    def test_monthly_training_history_uses_openable_slideshow_and_initials(self) -> None:
+        page = Mock(spec=ft.Page)
+        members = [
+            {
+                "id": "member-1",
+                "first_name": "Jamie",
+                "last_name": "Rivera",
+                "operating_initials": "JR",
+            }
+        ]
+        sessions = [
+            {
+                "date": "2026-07-27",
+                "file_name": "Lesson.pptx",
+                "presentation_path": r"T:\BAE\Training\Monthly\2026\Lesson.pptx",
+                "instructor_id": "member-1",
+                "attendee_ids": ["member-1"],
+            }
+        ]
+        with patch(
+            "monthly_training_page.load_records", side_effect=[members, sessions]
+        ):
+            view = build_monthly_training_view(page)
+
+        history = view.controls[0].content.controls[3]
+        card_row = history.controls[0].content
+        presentation_button = card_row.controls[0].content
+        attendee_text = card_row.controls[1].controls[2]
+
+        self.assertIsInstance(presentation_button, ft.IconButton)
+        self.assertEqual(presentation_button.icon, ft.Icons.SLIDESHOW)
+        self.assertTrue(callable(presentation_button.on_click))
+        self.assertEqual(attendee_text.value, "Attendees: JR")
+
 
 class FletStartupTests(unittest.IsolatedAsyncioTestCase):
     async def test_startup_renders_initial_route_without_client_event(self) -> None:

@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from datetime import date
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import data_store
 from team_member_service import display_name, role_sort_key, upsert_member
@@ -30,6 +30,7 @@ from monthly_training_service import (
     MONTHLY_REPORT_DIRECTORY,
     MONTHLY_REPORT_NAME,
     create_session_record,
+    open_presentation_file,
     sorted_sessions,
 )
 from training_history_service import (
@@ -483,6 +484,23 @@ class MonthlyTrainingServiceTests(unittest.TestCase):
             [{"date": "2026-07-01"}, "invalid", {"date": "2026-08-01"}]
         )
         self.assertEqual([session["date"] for session in sessions], ["2026-08-01", "2026-07-01"])
+
+    def test_presentation_file_uses_operating_system_opener(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            presentation = Path(directory) / "lesson.pptx"
+            presentation.touch()
+            opener = Mock()
+
+            result = open_presentation_file(
+                {"presentation_path": str(presentation)}, opener=opener
+            )
+
+            self.assertEqual(result, presentation)
+            opener.assert_called_once_with(str(presentation))
+
+    def test_missing_presentation_file_cannot_be_opened(self) -> None:
+        with self.assertRaisesRegex(FileNotFoundError, "could not be found"):
+            open_presentation_file({"presentation_path": "missing.pptx"}, opener=Mock())
 
 
 if __name__ == "__main__":

@@ -1,8 +1,9 @@
 """Business rules and Excel reporting for monthly training sessions."""
 
 from datetime import date
+import os
 from pathlib import Path, PureWindowsPath
-from typing import Any
+from typing import Any, Callable
 from uuid import uuid4
 
 from training_directory_service import full_name
@@ -50,6 +51,24 @@ def sorted_sessions(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
         key=lambda record: str(record.get("date", "")),
         reverse=True,
     )
+
+
+def open_presentation_file(
+    record: dict[str, Any], opener: Callable[[str], Any] | None = None
+) -> Path:
+    """Open a saved presentation with the operating system's associated app."""
+    presentation_path = Path(str(record.get("presentation_path", "")).strip())
+    if not str(presentation_path) or not presentation_path.is_file():
+        raise FileNotFoundError(
+            f"The saved presentation could not be found: {presentation_path}"
+        )
+    if opener is None:
+        startfile = getattr(os, "startfile", None)
+        if startfile is None:
+            raise OSError("Opening presentations is only supported by this app on Windows.")
+        opener = startfile
+    opener(str(presentation_path))
+    return presentation_path
 
 
 def generate_monthly_history_report(

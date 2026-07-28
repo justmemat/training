@@ -4,7 +4,11 @@ from datetime import date, datetime
 import flet as ft
 
 from data_store import load_records, save_records
-from monthly_training_service import create_session_record, sorted_sessions
+from monthly_training_service import (
+    create_session_record,
+    open_presentation_file,
+    sorted_sessions,
+)
 from team_member_service import role_sort_key
 from training_directory_service import full_name
 
@@ -41,16 +45,27 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
             )
         except ValueError:
             displayed_date = "Unknown date"
-        attendees = [
-            member_name(members_by_id.get(str(member_id)))
-            for member_id in record.get("attendee_ids", [])
-        ]
+        attendees = []
+        for member_id in record.get("attendee_ids", []):
+            member = members_by_id.get(str(member_id))
+            initials = str(member.get("operating_initials", "")).strip().upper() if member else ""
+            attendees.append(initials or "Unknown")
+
+        def open_presentation(_: ft.ControlEvent) -> None:
+            try:
+                open_presentation_file(record)
+            except (FileNotFoundError, OSError) as error:
+                page.show_dialog(ft.SnackBar(ft.Text(str(error))))
+
         return ft.Container(
             content=ft.Row(
                 [
                     ft.Container(
-                        content=ft.Icon(
-                            ft.Icons.CALENDAR_MONTH, color=ft.Colors.INDIGO_700
+                        content=ft.IconButton(
+                            icon=ft.Icons.SLIDESHOW,
+                            icon_color=ft.Colors.INDIGO_700,
+                            tooltip=f"Open {record.get('file_name', 'training presentation')}",
+                            on_click=open_presentation,
                         ),
                         bgcolor=ft.Colors.INDIGO_50,
                         border_radius=10,
