@@ -54,7 +54,6 @@ class FletCompatibilityTests(unittest.TestCase):
     def test_all_views_build_with_flet_0863(self) -> None:
         page = Mock(spec=ft.Page)
         with (
-            patch("monthly_training_page.load_records", return_value=[]),
             patch("team_members_page.load_records", return_value=[]),
             patch("trainees_page.load_records", return_value=[]),
         ):
@@ -66,6 +65,23 @@ class FletCompatibilityTests(unittest.TestCase):
             ]
 
         self.assertTrue(all(isinstance(view, ft.View) for view in views))
+
+    def test_monthly_training_button_opens_success_dialog(self) -> None:
+        page = Mock()
+        view = build_monthly_training_view(page)
+
+        self.assertEqual(len(view.controls), 1)
+        submit_button = view.controls[0]
+        self.assertIsInstance(submit_button, ft.FilledButton)
+        self.assertEqual(submit_button.content, "Submit Training Record")
+
+        submit_button.on_click(Mock(spec=ft.ControlEvent))
+
+        page.open.assert_called_once()
+        dialog = page.open.call_args.args[0]
+        self.assertIsInstance(dialog, ft.AlertDialog)
+        self.assertEqual(dialog.title.value, "Success")
+        self.assertEqual(dialog.content.value, "The change was successful.")
 
 
 class FletStartupTests(unittest.IsolatedAsyncioTestCase):
