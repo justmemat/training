@@ -9,7 +9,7 @@ from team_members_page import build_team_members_view
 from trainees_page import build_trainees_view
 
 
-def main(page: ft.Page) -> None:
+async def main(page: ft.Page) -> None:
     """Configure the window and display the view for the current route."""
     page.title = "OSF Training"
     page.theme_mode = ft.ThemeMode.LIGHT
@@ -27,6 +27,9 @@ def main(page: ft.Page) -> None:
         "/monthly-training": build_monthly_training_view,
     }
 
+    async def navigate_home(_: ft.ControlEvent) -> None:
+        await page.push_route("/")
+
     def route_change(event: ft.RouteChangeEvent) -> None:
         view_builder = routes.get(event.route, build_landing_view)
         page.views.clear()
@@ -41,7 +44,7 @@ def main(page: ft.Page) -> None:
                     appbar=ft.AppBar(
                         leading=ft.IconButton(
                             icon=ft.Icons.ARROW_BACK,
-                            on_click=lambda _: page.push_route("/"),
+                            on_click=navigate_home,
                         ),
                         title=ft.Text("Unable to open page"),
                     ),
@@ -63,13 +66,13 @@ def main(page: ft.Page) -> None:
                                     ft.FilledButton(
                                         "Back to home",
                                         icon=ft.Icons.HOME,
-                                        on_click=lambda _: page.push_route("/"),
+                                        on_click=navigate_home,
                                     ),
                                 ],
                                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                                 spacing=16,
                             ),
-                            alignment=ft.alignment.center,
+                            alignment=ft.Alignment.CENTER,
                             padding=40,
                         )
                     ],
@@ -79,12 +82,12 @@ def main(page: ft.Page) -> None:
             )
         page.update()
 
-    def view_pop(_: ft.ViewPopEvent) -> None:
-        page.push_route("/")
+    async def view_pop(_: ft.ViewPopEvent) -> None:
+        await page.push_route("/")
 
     page.on_route_change = route_change
     page.on_view_pop = view_pop
-    page.push_route(page.route or "/")
+    await page.push_route(page.route or "/")
 
 
 if __name__ == "__main__":

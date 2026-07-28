@@ -25,11 +25,14 @@ from training_report_service import create_training_report
 
 def build_trainees_view(page: ft.Page) -> ft.View:
     """Build the trainee selector and selected trainee's training details."""
+    async def navigate_home(_: ft.ControlEvent) -> None:
+        await page.push_route("/")
+
     members = load_records("team_members")
     profiles = load_records("trainees")
     history_records = load_records("training_history")
     trainee_selector = ft.Dropdown(
-        label="Select a trainee", width=420, prefix_icon=ft.Icons.SCHOOL
+        label="Select a trainee", width=420, leading_icon=ft.Icons.SCHOOL
     )
     details = ft.Column()
 
@@ -66,7 +69,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                         spacing=14,
                     ),
-                    alignment=ft.alignment.center,
+                    alignment=ft.Alignment.CENTER,
                     padding=60,
                 )
             ]
@@ -158,21 +161,21 @@ def build_trainees_view(page: ft.Page) -> ft.View:
             value=primary_value if primary_value in member_ids else "",
             options=member_dropdown_options(),
             width=310,
-            prefix_icon=ft.Icons.PERSON,
+            leading_icon=ft.Icons.PERSON,
         )
         secondary_instructor = ft.Dropdown(
             label="Secondary instructor",
             value=secondary_value if secondary_value in member_ids else "",
             options=member_dropdown_options(),
             width=310,
-            prefix_icon=ft.Icons.PERSON_OUTLINE,
+            leading_icon=ft.Icons.PERSON_OUTLINE,
         )
         assigned_manager = ft.Dropdown(
             label="Assigned manager",
             value=manager_value if manager_value in manager_ids else "",
             options=manager_options,
             width=310,
-            prefix_icon=ft.Icons.BADGE,
+            leading_icon=ft.Icons.BADGE,
         )
         message = ft.Text(visible=False)
         creation_progress = ft.ProgressBar(
@@ -355,7 +358,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                 label="Instructor",
                 options=member_dropdown_options()[1:],
                 width=420,
-                prefix_icon=ft.Icons.PERSON,
+                leading_icon=ft.Icons.PERSON,
             )
             training_summary = ft.TextField(
                 label="Training Summary",
@@ -691,7 +694,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                     spacing=18,
                 ),
                 bgcolor=ft.Colors.WHITE,
-                border=ft.border.all(1, ft.Colors.INDIGO_100),
+                border=ft.Border.all(1, ft.Colors.INDIGO_100),
                 border_radius=14,
                 padding=28,
             )
@@ -757,7 +760,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
         )
         page.open(dialog)
 
-    trainee_selector.on_change = lambda _: (render_details(), page.update())
+    trainee_selector.on_select = lambda _: (render_details(), page.update())
     refresh_selector()
     return ft.View(
         route="/trainees",
@@ -766,7 +769,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
             leading=ft.IconButton(
                 icon=ft.Icons.ARROW_BACK,
                 tooltip="Back to home",
-                on_click=lambda _: page.push_route("/"),
+                on_click=navigate_home,
             ),
             title=ft.Text("Trainees"),
             bgcolor=ft.Colors.WHITE,

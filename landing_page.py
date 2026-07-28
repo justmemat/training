@@ -6,6 +6,9 @@ import flet as ft
 def _navigation_card(
     page: ft.Page, icon: str, title: str, description: str, route: str
 ) -> ft.Container:
+    async def navigate(_: ft.ControlEvent) -> None:
+        await page.push_route(route)
+
     return ft.Container(
         content=ft.Column(
             controls=[
@@ -20,14 +23,14 @@ def _navigation_card(
                 ft.FilledButton(
                     "Open",
                     icon=ft.Icons.ARROW_FORWARD,
-                    on_click=lambda _, destination=route: page.push_route(destination),
+                    on_click=navigate,
                 ),
             ],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             spacing=16,
         ),
         bgcolor=ft.Colors.WHITE,
-        border=ft.border.all(1, ft.Colors.INDIGO_100),
+        border=ft.Border.all(1, ft.Colors.INDIGO_100),
         border_radius=18,
         padding=28,
         width=270,

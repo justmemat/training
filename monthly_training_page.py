@@ -17,6 +17,9 @@ from training_history_service import open_report_file
 
 def build_monthly_training_view(page: ft.Page) -> ft.View:
     """Build monthly training submission, history, and Excel reporting."""
+    async def navigate_home(_: ft.ControlEvent) -> None:
+        await page.push_route("/")
+
     loaded_members = load_records("team_members")
     loaded_sessions = load_records("monthly_training")
     members = loaded_members if isinstance(loaded_members, list) else []
@@ -89,7 +92,7 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
                         ]
                     ),
                     bgcolor=ft.Colors.WHITE,
-                    border=ft.border.all(1, ft.Colors.INDIGO_100),
+                    border=ft.Border.all(1, ft.Colors.INDIGO_100),
                     border_radius=10,
                     padding=12,
                 )
@@ -196,7 +199,7 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
                         ft.Container(
                             content=ft.Column(attendance_boxes, spacing=2),
                             height=220,
-                            border=ft.border.all(1, ft.Colors.GREY_300),
+                            border=ft.Border.all(1, ft.Colors.GREY_300),
                             border_radius=8,
                             padding=10,
                         ),
@@ -293,7 +296,7 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
             leading=ft.IconButton(
                 icon=ft.Icons.ARROW_BACK,
                 tooltip="Back to home",
-                on_click=lambda _: page.push_route("/"),
+                on_click=navigate_home,
             ),
             title=ft.Text("Monthly Training"),
             bgcolor=ft.Colors.WHITE,
