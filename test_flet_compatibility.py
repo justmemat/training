@@ -5,7 +5,7 @@ import inspect
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import flet as ft
 
@@ -69,20 +69,43 @@ class FletCompatibilityTests(unittest.TestCase):
 
 
 class FletStartupTests(unittest.IsolatedAsyncioTestCase):
-    async def test_startup_awaits_initial_route(self) -> None:
+    async def test_startup_renders_initial_route_without_client_event(self) -> None:
         page = SimpleNamespace(
             route="/",
             window=SimpleNamespace(min_width=None, min_height=None),
             views=[],
-            push_route=AsyncMock(),
+            update=Mock(),
         )
 
         with patch.object(application, "initialize_data_files"):
             await application.main(page)
 
-        page.push_route.assert_awaited_once_with("/")
+        self.assertEqual(len(page.views), 1)
+        self.assertEqual(page.views[0].route, "/")
+        page.update.assert_called_once_with()
         self.assertTrue(callable(page.on_route_change))
         self.assertTrue(callable(page.on_view_pop))
+
+    async def test_route_change_renders_requested_view(self) -> None:
+        page = SimpleNamespace(
+            route="/",
+            window=SimpleNamespace(min_width=None, min_height=None),
+            views=[],
+            update=Mock(),
+        )
+
+        with (
+            patch.object(application, "initialize_data_files"),
+            patch.object(
+                application,
+                "build_team_members_view",
+                return_value=ft.View(route="/team-members"),
+            ),
+        ):
+            await application.main(page)
+            page.on_route_change(SimpleNamespace(route="/team-members"))
+
+        self.assertEqual(page.views[0].route, "/team-members")
 
 
 if __name__ == "__main__":
