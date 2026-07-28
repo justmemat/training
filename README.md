@@ -1,4 +1,6 @@
-# OSF Training App
+# ATLAS
+
+Assessment, Training, Logging, and Analytics System
 
 ## Windows setup
 
@@ -40,6 +42,19 @@ The landing view is rendered immediately at startup rather than waiting for a
 client-side route-change notification. This is important when the desktop client
 already starts at `/`, because pushing the same route does not guarantee another
 route-change event.
+
+## Packaging for Windows
+
+Place the application icon at `assets/icon.ico`, then run the pack command from
+the directory containing `main.py`:
+
+```bat
+flet pack main.py -i assets/icon.ico -n ATLAS --add-data "assets; assets" --file-version 1.1.1
+```
+
+The application resolves the assets directory both beside the Python sources
+and inside PyInstaller's temporary bundle directory, so the packaged icon and
+other bundled assets remain available at runtime.
 
 You can confirm the active version with:
 

@@ -16,7 +16,6 @@ from monthly_training_page import build_monthly_training_view
 from team_members_page import build_team_members_view
 from trainees_page import build_trainees_view
 
-
 UI_FILES = (
     "main.py",
     "landing_page.py",
@@ -86,6 +85,31 @@ class FletCompatibilityTests(unittest.TestCase):
 
         self.assertTrue(all(isinstance(view, ft.View) for view in views))
 
+    def test_landing_brand_and_navigation_loading_dialog(self) -> None:
+        page = Mock(spec=ft.Page)
+        page.push_route = AsyncMock()
+        view = build_landing_view(page)
+
+        self.assertEqual(
+            view.appbar.title.value,
+            "Assessment, Training, Logging, and Analytics System",
+        )
+        self.assertEqual(view.controls[0].controls[0].value, "ATLAS")
+
+        first_button = view.controls[0].controls[3].controls[0].content.controls[3]
+        with patch("landing_page.asyncio.sleep", new=AsyncMock()) as sleep:
+            asyncio.run(first_button.on_click(Mock(spec=ft.ControlEvent)))
+
+        page.show_dialog.assert_called_once()
+        dialog = page.show_dialog.call_args.args[0]
+        self.assertIsInstance(dialog.content.controls[0], ft.ProgressRing)
+        self.assertEqual(
+            dialog.content.controls[1].value, "Connecting to the shared network…"
+        )
+        sleep.assert_awaited_once_with(0.1)
+        page.push_route.assert_awaited_once_with("/team-members")
+        page.pop_dialog.assert_called_once_with()
+
     def test_monthly_training_button_opens_entry_dialog(self) -> None:
         page = Mock(spec=ft.Page)
         members = [
@@ -134,7 +158,8 @@ class FletCompatibilityTests(unittest.TestCase):
         labels = [
             control.value
             for control in dialog.content.content.controls
-            if isinstance(control, ft.Text) and control.value.startswith(("1.", "2.", "3.", "4."))
+            if isinstance(control, ft.Text)
+            and control.value.startswith(("1.", "2.", "3.", "4."))
         ]
         self.assertEqual(
             labels,
@@ -148,7 +173,9 @@ class FletCompatibilityTests(unittest.TestCase):
         instructor.on_select(Mock(spec=ft.ControlEvent))
         self.assertTrue(attendance[0].value)
 
-    def test_monthly_training_history_uses_openable_slideshow_and_initials(self) -> None:
+    def test_monthly_training_history_uses_openable_slideshow_and_initials(
+        self,
+    ) -> None:
         page = Mock(spec=ft.Page)
         members = [
             {
@@ -234,8 +261,10 @@ class FletCompatibilityTests(unittest.TestCase):
 class FletStartupTests(unittest.IsolatedAsyncioTestCase):
     async def test_startup_renders_initial_route_without_client_event(self) -> None:
         page = SimpleNamespace(
-            route="/",
-            window=SimpleNamespace(min_width=None, min_height=None),
+            route="/trainees",
+            window=SimpleNamespace(
+                min_width=None, min_height=None, icon=None, center=AsyncMock()
+            ),
             views=[],
             update=Mock(),
         )
@@ -245,6 +274,7 @@ class FletStartupTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(len(page.views), 1)
         self.assertEqual(page.views[0].route, "/")
+        page.window.center.assert_awaited_once_with()
         page.update.assert_called_once_with()
         self.assertTrue(callable(page.on_route_change))
         self.assertTrue(callable(page.on_view_pop))
@@ -252,7 +282,9 @@ class FletStartupTests(unittest.IsolatedAsyncioTestCase):
     async def test_route_change_renders_requested_view(self) -> None:
         page = SimpleNamespace(
             route="/",
-            window=SimpleNamespace(min_width=None, min_height=None),
+            window=SimpleNamespace(
+                min_width=None, min_height=None, icon=None, center=AsyncMock()
+            ),
             views=[],
             update=Mock(),
         )

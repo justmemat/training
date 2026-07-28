@@ -1,4 +1,7 @@
-"""Entry point for the OSF Training application."""
+"""Entry point for the ATLAS application."""
+
+import sys
+from pathlib import Path
 
 import flet as ft
 
@@ -8,15 +11,24 @@ from monthly_training_page import build_monthly_training_view
 from team_members_page import build_team_members_view
 from trainees_page import build_trainees_view
 
+# PyInstaller extracts bundled data into ``_MEIPASS``. During development the
+# assets directory sits beside this file, so the same reference works in both.
+APP_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+ASSETS_DIR = APP_DIR / "assets"
+
 
 async def main(page: ft.Page) -> None:
     """Configure the window and display the view for the current route."""
-    page.title = "OSF Training"
+    page.title = "ATLAS"
     page.theme_mode = ft.ThemeMode.LIGHT
     page.theme = ft.Theme(color_scheme_seed=ft.Colors.INDIGO)
     page.padding = 0
     page.window.min_width = 700
     page.window.min_height = 520
+    icon_path = ASSETS_DIR / "icon.ico"
+    if icon_path.is_file():
+        page.window.icon = str(icon_path)
+    await page.window.center()
 
     initialize_data_files()
 
@@ -35,7 +47,7 @@ async def main(page: ft.Page) -> None:
         # client to change its route; when the client is already at "/" it may
         # not send a route-change event back, which would leave ``page.views``
         # empty and display a blank window.
-        route = event.route if event is not None else (page.route or "/")
+        route = event.route if event is not None else "/"
         view_builder = routes.get(route, build_landing_view)
         page.views.clear()
         try:
@@ -96,4 +108,4 @@ async def main(page: ft.Page) -> None:
 
 
 if __name__ == "__main__":
-    ft.run(main)
+    ft.run(main, assets_dir=str(ASSETS_DIR))
