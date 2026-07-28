@@ -8,6 +8,9 @@ from team_member_service import display_name, role_sort_key, upsert_member
 
 def build_team_members_view(page: ft.Page) -> ft.View:
     """Build the team-member list and its add/edit/delete interactions."""
+    async def navigate_home(_: ft.ControlEvent) -> None:
+        await page.push_route("/")
+
     members = load_records("team_members")
     member_list = ft.Column(spacing=10)
     empty_message = ft.Text(
@@ -189,7 +192,7 @@ def build_team_members_view(page: ft.Page) -> ft.View:
                 ]
             ),
             bgcolor=ft.Colors.WHITE,
-            border=ft.border.all(1, ft.Colors.INDIGO_100),
+            border=ft.Border.all(1, ft.Colors.INDIGO_100),
             border_radius=12,
             padding=16,
         )
@@ -209,7 +212,7 @@ def build_team_members_view(page: ft.Page) -> ft.View:
             leading=ft.IconButton(
                 icon=ft.Icons.ARROW_BACK,
                 tooltip="Back to home",
-                on_click=lambda _: page.push_route("/"),
+                on_click=navigate_home,
             ),
             title=ft.Text("Team Members"),
             bgcolor=ft.Colors.WHITE,
