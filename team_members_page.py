@@ -153,7 +153,7 @@ def build_team_members_view(page: ft.Page) -> ft.View:
         )
         page.show_dialog(dialog)
 
-    def member_row(member: dict) -> ft.Container:
+    def member_row(member: dict) -> ft.ContextMenu:
         roles: list[ft.Control] = []
         if member.get("is_manager"):
             roles.append(
@@ -173,7 +173,7 @@ def build_team_members_view(page: ft.Page) -> ft.View:
         if not roles:
             roles.append(ft.Text("Team member", color=ft.Colors.GREY_600))
 
-        return ft.Container(
+        card = ft.Container(
             content=ft.Row(
                 [
                     ft.CircleAvatar(
@@ -201,25 +201,28 @@ def build_team_members_view(page: ft.Page) -> ft.View:
                         expand=True,
                     ),
                     ft.Row(roles, spacing=6, wrap=True),
-                    ft.IconButton(
-                        icon=ft.Icons.EDIT,
-                        tooltip="Edit team member",
-                        on_click=lambda _, selected=member: open_member_dialog(
-                            selected
-                        ),
-                    ),
-                    ft.IconButton(
-                        icon=ft.Icons.DELETE_OUTLINE,
-                        icon_color=ft.Colors.RED_600,
-                        tooltip="Remove team member",
-                        on_click=lambda _, selected=member: confirm_delete(selected),
-                    ),
                 ]
             ),
             bgcolor=ft.Colors.WHITE,
             border=ft.Border.all(1, ft.Colors.INDIGO_100),
             border_radius=12,
             padding=16,
+        )
+        return ft.ContextMenu(
+            content=card,
+            secondary_items=[
+                ft.PopupMenuItem(
+                    content="Edit",
+                    icon=ft.Icons.EDIT,
+                    on_click=lambda _, selected=member: open_member_dialog(selected),
+                ),
+                ft.PopupMenuItem(
+                    content="Delete",
+                    icon=ft.Icons.DELETE_OUTLINE,
+                    on_click=lambda _, selected=member: confirm_delete(selected),
+                ),
+            ],
+            tooltip="Right-click to edit or delete",
         )
 
     def render_members() -> None:

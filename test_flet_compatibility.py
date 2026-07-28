@@ -198,6 +198,38 @@ class FletCompatibilityTests(unittest.TestCase):
         delete_dialog = page.show_dialog.call_args.args[0]
         self.assertEqual(delete_dialog.title.value, "Delete training entry?")
 
+    def test_team_members_use_right_click_edit_and_delete_menu(self) -> None:
+        page = Mock(spec=ft.Page)
+        members = [
+            {
+                "id": "member-1",
+                "first_name": "Jamie",
+                "last_name": "Rivera",
+                "operating_initials": "JR",
+                "email": "jamie@example.com",
+            }
+        ]
+        with patch("team_members_page.load_records", return_value=members):
+            view = build_team_members_view(page)
+
+        member_list = view.controls[0].content.controls[3]
+        context_menu = member_list.controls[0]
+        self.assertIsInstance(context_menu, ft.ContextMenu)
+        self.assertEqual(
+            [item.content for item in context_menu.secondary_items], ["Edit", "Delete"]
+        )
+        self.assertEqual(context_menu.tooltip, "Right-click to edit or delete")
+        self.assertEqual(len(context_menu.content.content.controls), 3)
+
+        context_menu.secondary_items[0].on_click(Mock(spec=ft.ControlEvent))
+        edit_dialog = page.show_dialog.call_args.args[0]
+        self.assertEqual(edit_dialog.title.value, "Edit team member")
+
+        page.reset_mock()
+        context_menu.secondary_items[1].on_click(Mock(spec=ft.ControlEvent))
+        delete_dialog = page.show_dialog.call_args.args[0]
+        self.assertEqual(delete_dialog.title.value, "Remove team member?")
+
 
 class FletStartupTests(unittest.IsolatedAsyncioTestCase):
     async def test_startup_renders_initial_route_without_client_event(self) -> None:
