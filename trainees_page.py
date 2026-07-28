@@ -1,5 +1,6 @@
 """Trainee assignment and training-information page."""
 
+import asyncio
 from datetime import date, datetime
 from pathlib import Path
 
@@ -13,7 +14,10 @@ from trainee_service import (
     format_start_date,
     update_profile,
 )
-from training_directory_service import create_training_directory, trainee_directory_exists
+from training_directory_service import (
+    create_training_directory,
+    trainee_directory_exists,
+)
 from training_history_service import (
     create_history_record,
     open_report_file,
@@ -25,6 +29,7 @@ from training_report_service import create_training_report
 
 def build_trainees_view(page: ft.Page) -> ft.View:
     """Build the trainee selector and selected trainee's training details."""
+
     async def navigate_home(_: ft.ControlEvent) -> None:
         await page.push_route("/")
 
@@ -63,8 +68,15 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                 ft.Container(
                     content=ft.Column(
                         [
-                            ft.Icon(ft.Icons.PERSON_SEARCH, size=58, color=ft.Colors.INDIGO_300),
-                            ft.Text("Select a trainee to view training information.", size=17),
+                            ft.Icon(
+                                ft.Icons.PERSON_SEARCH,
+                                size=58,
+                                color=ft.Colors.INDIGO_300,
+                            ),
+                            ft.Text(
+                                "Select a trainee to view training information.",
+                                size=17,
+                            ),
                         ],
                         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                         spacing=14,
@@ -112,6 +124,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
             options=[ft.dropdown.Option(value) for value in TRAINING_PHASES],
             width=260,
         )
+
         def member_dropdown_options() -> list[ft.dropdown.Option]:
             return [
                 ft.dropdown.Option(key="", text="Unassigned"),
@@ -131,6 +144,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                     )
                 ],
             ]
+
         manager_options = [
             ft.dropdown.Option(key="", text="Unassigned"),
             *[
@@ -258,7 +272,9 @@ def build_trainees_view(page: ft.Page) -> ft.View:
             daily_report_button.disabled = False
             daily_report_button.tooltip = "Create a populated daily training report"
             history_report_button.disabled = False
-            history_report_button.tooltip = "Create or update the Excel training history report"
+            history_report_button.tooltip = (
+                "Create or update the Excel training history report"
+            )
             details.update()
 
         create_directory_button = ft.OutlinedButton(
@@ -301,7 +317,9 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                     else "Unknown instructor"
                 )
 
-                def open_report(_: ft.ControlEvent, history_entry: dict = entry) -> None:
+                def open_report(
+                    _: ft.ControlEvent, history_entry: dict = entry
+                ) -> None:
                     try:
                         open_report_file(history_entry)
                     except (FileNotFoundError, OSError, ValueError) as error:
@@ -320,7 +338,9 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                                 ft.Column(
                                     [
                                         ft.Text(
-                                            format_start_date(str(entry.get("date", ""))),
+                                            format_start_date(
+                                                str(entry.get("date", ""))
+                                            ),
                                             weight=ft.FontWeight.BOLD,
                                         ),
                                         ft.Text(
@@ -374,62 +394,157 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                 max_lines=8,
                 width=560,
             )
-            report_message = ft.Text(visible=False)
-            report_progress = ft.ProgressBar(
-                visible=False,
-                color=ft.Colors.INDIGO_600,
-                bgcolor=ft.Colors.INDIGO_100,
+            selected_report_date = date.today()
+            report_date_field = ft.TextField(
+                label="Report date",
+                value=selected_report_date.strftime("%d %b %Y"),
+                hint_text="Select a date",
+                read_only=True,
+                width=280,
+                prefix_icon=ft.Icons.CALENDAR_MONTH,
             )
 
-            def create_report(_: ft.ControlEvent) -> None:
+            def report_date_selected(_: ft.ControlEvent) -> None:
+                nonlocal selected_report_date
+                if report_date_picker.value is None:
+                    return
+                selected_report_date = (
+                    report_date_picker.value.date()
+                    if isinstance(report_date_picker.value, datetime)
+                    else report_date_picker.value
+                )
+                report_date_field.value = selected_report_date.strftime("%d %b %Y")
+                report_date_field.update()
+
+            report_date_picker = ft.DatePicker(
+                value=selected_report_date,
+                first_date=date(2000, 1, 1),
+                last_date=date(2100, 12, 31),
+                help_text="Select daily report date",
+                on_change=report_date_selected,
+            )
+            report_date_field.on_click = lambda _: page.show_dialog(report_date_picker)
+
+            async def create_report(_: ft.ControlEvent) -> None:
                 generate_button.disabled = True
-                report_progress.visible = True
-                report_message.value = "Creating and saving the daily training report..."
-                report_message.color = ft.Colors.INDIGO_700
-                report_message.visible = True
                 dialog.update()
+
+                step_labels = [
+                    "Validate report details",
+                    "Create and save PDF report",
+                    "Record report in training history",
+                    "Refresh trainee report history",
+                ]
+                step_texts = [
+                    ft.Text(f"○ {label}", color=ft.Colors.GREY_600)
+                    for label in step_labels
+                ]
+                progress = ft.ProgressBar(
+                    value=0,
+                    height=12,
+                    color=ft.Colors.INDIGO_600,
+                    bgcolor=ft.Colors.INDIGO_100,
+                    border_radius=6,
+                )
+                progress_message = ft.Text(
+                    "Preparing daily training report...",
+                    weight=ft.FontWeight.BOLD,
+                    color=ft.Colors.INDIGO_700,
+                )
+                progress_dialog = ft.AlertDialog(
+                    modal=True,
+                    title=ft.Row(
+                        [
+                            ft.ProgressRing(width=28, height=28, stroke_width=4),
+                            ft.Text("Creating daily training report"),
+                        ],
+                        spacing=14,
+                    ),
+                    content=ft.Container(
+                        content=ft.Column(
+                            [progress_message, progress, *step_texts],
+                            tight=True,
+                            spacing=12,
+                        ),
+                        width=500,
+                        padding=8,
+                    ),
+                )
+
+                # Replace the entry form with a prominent, dedicated progress display.
+                page.pop_dialog()
+                page.show_dialog(progress_dialog)
+
+                async def show_step(index: int, *, complete: bool = False) -> None:
+                    for step_index, (step, label) in enumerate(
+                        zip(step_texts, step_labels)
+                    ):
+                        if step_index < index or (complete and step_index == index):
+                            step.value = f"✓ {label}"
+                            step.color = ft.Colors.GREEN_700
+                            step.weight = ft.FontWeight.W_600
+                        elif step_index == index:
+                            step.value = f"● {label}"
+                            step.color = ft.Colors.INDIGO_700
+                            step.weight = ft.FontWeight.W_600
+                    progress.value = (index + (1 if complete else 0)) / len(step_labels)
+                    progress_message.value = (
+                        "Daily training report is ready."
+                        if complete and index == len(step_labels) - 1
+                        else step_labels[index] + "..."
+                    )
+                    progress_dialog.update()
+                    await asyncio.sleep(0)
+
                 try:
-                    generated_on = date.today()
-                    output_path = create_training_report(
+                    await show_step(0)
+                    await show_step(1)
+                    output_path = await asyncio.to_thread(
+                        create_training_report,
                         member,
                         profile,
                         members,
                         instructor_id=instructor.value or "",
                         training_summary=training_summary.value or "",
                         instructor_comments=instructor_comments.value or "",
-                        report_date=generated_on,
+                        report_date=selected_report_date,
                     )
+                    await show_step(1, complete=True)
+                    await show_step(2)
                     history_records.append(
                         create_history_record(
                             trainee_id=str(member.get("id", "")),
                             instructor_id=instructor.value or "",
-                            report_date=generated_on,
+                            report_date=selected_report_date,
                             report_path=str(output_path),
                         )
                     )
-                    save_records("training_history", history_records)
+                    await asyncio.to_thread(
+                        save_records, "training_history", history_records
+                    )
+                    await show_step(2, complete=True)
                 except ModuleNotFoundError as error:
                     if error.name != "pypdf":
                         raise
-                    report_message.value = (
+                    progress_message.value = (
                         "PDF support is not installed. Run: "
                         "python -m pip install -r requirements.txt"
                     )
                 except (FileNotFoundError, OSError, ValueError) as error:
-                    report_message.value = str(error)
+                    progress_message.value = str(error)
                 else:
-                    report_message.value = f"Daily training report created: {output_path}"
-                    report_message.color = ft.Colors.GREEN_700
-                    report_progress.visible = False
-                    generate_button.disabled = False
+                    await show_step(3)
                     render_history()
                     details.update()
-                    dialog.update()
+                    await show_step(3, complete=True)
+                    page.pop_dialog()
                     return
-                report_message.color = ft.Colors.RED_700
-                report_progress.visible = False
-                generate_button.disabled = False
-                dialog.update()
+                progress_message.color = ft.Colors.RED_700
+                progress.value = None
+                progress_dialog.actions = [
+                    ft.TextButton("Close", on_click=lambda _: page.pop_dialog())
+                ]
+                progress_dialog.update()
 
             generate_button = ft.FilledButton(
                 "Create report", icon=ft.Icons.PICTURE_AS_PDF, on_click=create_report
@@ -440,11 +555,10 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                 content=ft.Container(
                     content=ft.Column(
                         [
+                            report_date_field,
                             instructor,
                             training_summary,
                             instructor_comments,
-                            report_message,
-                            report_progress,
                         ],
                         tight=True,
                         spacing=14,
@@ -490,7 +604,8 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                             [
                                 ft.Text("Start date", color=ft.Colors.GREY_600),
                                 ft.Text(
-                                    format_start_date(selected_start_date) or "Not assigned",
+                                    format_start_date(selected_start_date)
+                                    or "Not assigned",
                                     size=17,
                                     weight=ft.FontWeight.W_500,
                                 ),
@@ -501,7 +616,11 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                             [
                                 ft.Text("Training Phase", color=ft.Colors.GREY_600),
                                 ft.Text(
-                                    str(profile.get("training_phase", TRAINING_PHASES[0])),
+                                    str(
+                                        profile.get(
+                                            "training_phase", TRAINING_PHASES[0]
+                                        )
+                                    ),
                                     size=17,
                                     weight=ft.FontWeight.W_500,
                                 ),
@@ -529,7 +648,9 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                         ),
                         ft.Column(
                             [
-                                ft.Text("Secondary instructor", color=ft.Colors.GREY_600),
+                                ft.Text(
+                                    "Secondary instructor", color=ft.Colors.GREY_600
+                                ),
                                 ft.Text(assigned_name(secondary_value), size=16),
                             ],
                             width=280,
@@ -640,7 +761,9 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                             [
                                 ft.CircleAvatar(
                                     content=ft.Text(
-                                        str(member.get("operating_initials", "")).upper(),
+                                        str(
+                                            member.get("operating_initials", "")
+                                        ).upper(),
                                         weight=ft.FontWeight.BOLD,
                                     ),
                                     radius=30,
@@ -717,7 +840,9 @@ def build_trainees_view(page: ft.Page) -> ft.View:
         available = [member for member in members if not member.get("is_trainee")]
         if not available:
             page.show_dialog(
-                ft.SnackBar(ft.Text("All team members are already assigned as trainees."))
+                ft.SnackBar(
+                    ft.Text("All team members are already assigned as trainees.")
+                )
             )
             return
         selection = ft.Dropdown(
@@ -782,7 +907,11 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                             [
                                 ft.Column(
                                     [
-                                        ft.Text("Trainees", size=30, weight=ft.FontWeight.BOLD),
+                                        ft.Text(
+                                            "Trainees",
+                                            size=30,
+                                            weight=ft.FontWeight.BOLD,
+                                        ),
                                         ft.Text(
                                             "Select a trainee to review or update their training.",
                                             color=ft.Colors.GREY_700,
