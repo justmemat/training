@@ -128,7 +128,7 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
         )
         return ft.ContextMenu(
             content=card,
-            items=[
+            secondary_items=[
                 ft.PopupMenuItem(
                     content="Edit",
                     icon=ft.Icons.EDIT,

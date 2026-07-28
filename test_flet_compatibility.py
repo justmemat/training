@@ -159,20 +159,22 @@ class FletCompatibilityTests(unittest.TestCase):
         attendee_text = card_row.controls[1].controls[2]
 
         self.assertIsInstance(context_menu, ft.ContextMenu)
-        self.assertEqual([item.content for item in context_menu.items], ["Edit", "Delete"])
+        self.assertEqual(
+            [item.content for item in context_menu.secondary_items], ["Edit", "Delete"]
+        )
         self.assertIsInstance(presentation_button, ft.IconButton)
         self.assertEqual(presentation_button.icon, ft.Icons.SLIDESHOW)
         self.assertTrue(callable(presentation_button.on_click))
         self.assertEqual(attendee_text.value, "Attendees: JR")
 
         page.reset_mock()
-        context_menu.items[0].on_click(Mock(spec=ft.ControlEvent))
+        context_menu.secondary_items[0].on_click(Mock(spec=ft.ControlEvent))
         edit_dialog = page.show_dialog.call_args.args[0]
         self.assertEqual(edit_dialog.title.value, "Edit monthly training")
         self.assertEqual(edit_dialog.actions[1].content, "Save")
 
         page.reset_mock()
-        context_menu.items[1].on_click(Mock(spec=ft.ControlEvent))
+        context_menu.secondary_items[1].on_click(Mock(spec=ft.ControlEvent))
         delete_dialog = page.show_dialog.call_args.args[0]
         self.assertEqual(delete_dialog.title.value, "Delete training entry?")
 
