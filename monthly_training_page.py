@@ -6,6 +6,8 @@ import flet as ft
 from data_store import load_records, save_records
 from monthly_training_service import (
     create_session_record,
+    generate_monthly_history_report,
+    open_monthly_history_report,
     open_presentation_file,
     sorted_sessions,
 )
@@ -307,6 +309,13 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
         )
         page.show_dialog(dialog)
 
+    def generate_report(_: ft.ControlEvent) -> None:
+        try:
+            report_path = generate_monthly_history_report(sessions, members)
+            open_monthly_history_report(report_path)
+        except (FileNotFoundError, OSError, PermissionError) as error:
+            page.show_dialog(ft.SnackBar(ft.Text(str(error))))
+
     render_sessions()
     return ft.View(
         route="/monthly-training",
@@ -342,16 +351,26 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
                                     spacing=2,
                                     expand=True,
                                 ),
-                                ft.FilledButton(
-                                    "Track training",
-                                    icon=ft.Icons.ADD,
-                                    on_click=lambda _: open_training_dialog(),
-                                    disabled=not ordered_members,
-                                    tooltip=(
-                                        "Add a team member before tracking training"
-                                        if not ordered_members
-                                        else None
-                                    ),
+                                ft.Row(
+                                    [
+                                        ft.OutlinedButton(
+                                            "Generate report",
+                                            icon=ft.Icons.TABLE_VIEW,
+                                            on_click=generate_report,
+                                        ),
+                                        ft.FilledButton(
+                                            "Track training",
+                                            icon=ft.Icons.ADD,
+                                            on_click=lambda _: open_training_dialog(),
+                                            disabled=not ordered_members,
+                                            tooltip=(
+                                                "Add a team member before tracking training"
+                                                if not ordered_members
+                                                else None
+                                            ),
+                                        ),
+                                    ],
+                                    spacing=10,
                                 ),
                             ]
                         ),

@@ -100,10 +100,26 @@ class FletCompatibilityTests(unittest.TestCase):
             view = build_monthly_training_view(page)
 
         self.assertEqual(len(view.controls), 1)
-        submit_button = view.controls[0].content.controls[0].controls[1]
+        action_buttons = view.controls[0].content.controls[0].controls[1]
+        report_button, submit_button = action_buttons.controls
+        self.assertIsInstance(report_button, ft.OutlinedButton)
+        self.assertEqual(report_button.content, "Generate report")
         self.assertIsInstance(submit_button, ft.FilledButton)
         self.assertEqual(submit_button.content, "Track training")
         self.assertFalse(submit_button.disabled)
+
+        report_path = Path("Monthly Training History.xlsx")
+        with (
+            patch(
+                "monthly_training_page.generate_monthly_history_report",
+                return_value=report_path,
+            ) as generate_report,
+            patch("monthly_training_page.open_monthly_history_report") as open_report,
+        ):
+            report_button.on_click(Mock(spec=ft.ControlEvent))
+
+        generate_report.assert_called_once_with([], members)
+        open_report.assert_called_once_with(report_path)
 
         submit_button.on_click(Mock(spec=ft.ControlEvent))
 

@@ -30,6 +30,8 @@ from monthly_training_service import (
     MONTHLY_REPORT_DIRECTORY,
     MONTHLY_REPORT_NAME,
     create_session_record,
+    generate_monthly_history_report,
+    open_monthly_history_report,
     open_presentation_file,
     sorted_sessions,
 )
@@ -461,6 +463,48 @@ class MonthlyTrainingServiceTests(unittest.TestCase):
             str(MONTHLY_REPORT_DIRECTORY), r"T:\BAE\Training\Monthly\Reports"
         )
         self.assertEqual(MONTHLY_REPORT_NAME, "Monthly Training History.xlsx")
+
+    def test_history_report_has_newest_year_tabs_first(self) -> None:
+        from openpyxl import load_workbook
+
+        records = [
+            {
+                "date": "2025-05-01",
+                "instructor_id": "one",
+                "attendee_ids": ["one"],
+                "file_name": "Older.pptx",
+            },
+            {
+                "date": "2026-06-01",
+                "instructor_id": "one",
+                "attendee_ids": ["one", "two"],
+                "file_name": "Newer.pptx",
+            },
+        ]
+        members = [
+            {"id": "one", "first_name": "Jamie", "last_name": "Rivera"},
+            {"id": "two", "first_name": "Morgan", "last_name": "Lee"},
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            report = generate_monthly_history_report(
+                records, members, output_directory=Path(directory)
+            )
+            workbook = load_workbook(report)
+
+        self.assertEqual(workbook.sheetnames, ["2026", "2025"])
+        self.assertEqual(workbook["2026"]["D4"].value, "Newer.pptx")
+        self.assertEqual(workbook["2025"]["D4"].value, "Older.pptx")
+
+    def test_generated_history_report_uses_operating_system_opener(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            report = Path(directory) / MONTHLY_REPORT_NAME
+            report.touch()
+            opener = Mock()
+
+            result = open_monthly_history_report(report, opener=opener)
+
+            self.assertEqual(result, report)
+            opener.assert_called_once_with(str(report))
 
     def test_session_records_file_date_instructor_and_attendance(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
