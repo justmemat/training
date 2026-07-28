@@ -2,24 +2,24 @@
 setlocal EnableExtensions EnableDelayedExpansion
 
 echo -----------------------------------------
-echo  Task Tracker Upgrade
+echo  ATLAS Upgrade
 echo -----------------------------------------
 
 echo Performing installation...
-taskkill /IM MAT.exe /F >nul 2>&1
+taskkill /IM ATLAS.exe /F >nul 2>&1
 taskkill /IM flet.exe /F >nul 2>&1
 timeout /t 2 /nobreak >nul
 
-set "TARGET=C:\\OSFTOOLS\\MAT\\MAT.exe"
-set "SOURCE_DIR=T:\\File Dump\\BZ\\MAT"
-set "SOURCE_FILE=MAT.exe"
-set "VERSION_FILE=%SOURCE_DIR%\\verchek.txt"
+set "TARGET=C:\OSFTOOLS\ATLAS\ATLAS.exe"
+set "SOURCE_DIR=T:\BAE\Training\Assets\App"
+set "SOURCE_FILE=ATLAS.exe"
+set "VERSION_FILE=%SOURCE_DIR%\verchek.txt"
 set "INSTALL_VERSION="
-set "TARGET_DIR=C:\\OSFTOOLS\\MAT"
-set "STAGING_FILE=MAT.new.exe"
-set "STAGING_PATH=%TARGET_DIR%\\%STAGING_FILE%"
-set "BACKUP_FILE=MAT.old.exe"
-set "BACKUP_PATH=%TARGET_DIR%\\%BACKUP_FILE%"
+set "TARGET_DIR=C:\OSFTOOLS\ATLAS"
+set "STAGING_FILE=ATLAS.new.exe"
+set "STAGING_PATH=%TARGET_DIR%\%STAGING_FILE%"
+set "BACKUP_FILE=ATLAS.old.exe"
+set "BACKUP_PATH=%TARGET_DIR%\%BACKUP_FILE%"
 
 if not exist "%SOURCE_DIR%" (
     echo ERROR: Source directory not found at "%SOURCE_DIR%".
@@ -28,7 +28,7 @@ if not exist "%SOURCE_DIR%" (
     exit /b 1
 )
 
-if exist "%SOURCE_DIR%\\%SOURCE_FILE%" (
+if exist "%SOURCE_DIR%\%SOURCE_FILE%" (
     if exist "%VERSION_FILE%" (
         set /p INSTALL_VERSION=<"%VERSION_FILE%"
     )
@@ -37,11 +37,16 @@ if exist "%SOURCE_DIR%\\%SOURCE_FILE%" (
         echo Downloading version !INSTALL_VERSION!...
     ) else (
         echo Installing Version unknown...
-        echo Downloading Task Tracker update...
+        echo Downloading ATLAS update...
     )
     echo Please be patient...
 
     if not exist "%TARGET_DIR%" mkdir "%TARGET_DIR%"
+    if not exist "%TARGET_DIR%" (
+        echo ERROR: Failed to create target directory at "%TARGET_DIR%".
+        pause
+        exit /b 1
+    )
 
     robocopy "%SOURCE_DIR%" "%TARGET_DIR%" "%SOURCE_FILE%" /R:2 /W:1 /NJH /NJS /TEE /ETA /XF "%STAGING_FILE%" "%BACKUP_FILE%"
 
@@ -51,14 +56,14 @@ if exist "%SOURCE_DIR%\\%SOURCE_FILE%" (
         exit /b 1
     )
 
-    move /Y "%TARGET_DIR%\\%SOURCE_FILE%" "%STAGING_PATH%" >nul
+    move /Y "%TARGET_DIR%\%SOURCE_FILE%" "%STAGING_PATH%" >nul
     if not exist "%STAGING_PATH%" (
         echo ERROR: Staging file not created at "%STAGING_PATH%".
         pause
         exit /b 1
     )
 ) else (
-    echo ERROR: Source Task Tracker not found at "%SOURCE_DIR%\\%SOURCE_FILE%"
+    echo ERROR: Source ATLAS executable not found at "%SOURCE_DIR%\%SOURCE_FILE%"
     pause
     exit /b 1
 )
@@ -71,7 +76,7 @@ if exist "%TARGET%" (
 
 move /Y "%STAGING_PATH%" "%TARGET%" >nul
 if not exist "%TARGET%" (
-    echo ERROR: Failed to place new Task Tracker executable.
+    echo ERROR: Failed to place new ATLAS executable.
     if exist "%BACKUP_PATH%" move /Y "%BACKUP_PATH%" "%TARGET%" >nul
     pause
     exit /b 1
@@ -83,8 +88,8 @@ for /f "usebackq tokens=*" %%D in (`powershell -command "(New-Object -ComObject 
     set "DESKTOP_PATH=%%D"
 )
 
-set "SHORTCUT_PATH=%DESKTOP_PATH%\\MAT.lnk"
-set "SHORTCUT_TARGET=C:\\OSFTOOLS\\MAT\\MAT.exe"
+set "SHORTCUT_PATH=%DESKTOP_PATH%\ATLAS.lnk"
+set "SHORTCUT_TARGET=C:\OSFTOOLS\ATLAS\ATLAS.exe"
 
 if exist "%SHORTCUT_PATH%" (
     echo Shortcut already exists at "%SHORTCUT_PATH%".
@@ -93,7 +98,7 @@ if exist "%SHORTCUT_PATH%" (
     powershell -command ^
       "$s=(New-Object -ComObject WScript.Shell).CreateShortcut('%SHORTCUT_PATH%');" ^
       "$s.TargetPath='%SHORTCUT_TARGET%';" ^
-      "$s.WorkingDirectory='C:\\OSFTOOLS\\MAT';" ^
+      "$s.WorkingDirectory='C:\OSFTOOLS\ATLAS';" ^
       "$s.WindowStyle=1;" ^
       "$s.Save()"
 )
