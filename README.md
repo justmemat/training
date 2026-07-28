@@ -36,6 +36,11 @@ python -m pip install --no-cache-dir -r requirements.txt
 python main.py
 ```
 
+The landing view is rendered immediately at startup rather than waiting for a
+client-side route-change notification. This is important when the desktop client
+already starts at `/`, because pushing the same route does not guarantee another
+route-change event.
+
 You can confirm the active version with:
 
 ```bat

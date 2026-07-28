@@ -30,8 +30,13 @@ async def main(page: ft.Page) -> None:
     async def navigate_home(_: ft.ControlEvent) -> None:
         await page.push_route("/")
 
-    def route_change(event: ft.RouteChangeEvent) -> None:
-        view_builder = routes.get(event.route, build_landing_view)
+    def route_change(event: ft.RouteChangeEvent | None = None) -> None:
+        # Render once directly during startup.  ``push_route()`` only asks the
+        # client to change its route; when the client is already at "/" it may
+        # not send a route-change event back, which would leave ``page.views``
+        # empty and display a blank window.
+        route = event.route if event is not None else (page.route or "/")
+        view_builder = routes.get(route, build_landing_view)
         page.views.clear()
         try:
             page.views.append(view_builder(page))
@@ -39,7 +44,7 @@ async def main(page: ft.Page) -> None:
             # Keep navigation failures visible instead of leaving an empty grey page.
             page.views.append(
                 ft.View(
-                    route=event.route,
+                    route=route,
                     bgcolor=ft.Colors.INDIGO_50,
                     appbar=ft.AppBar(
                         leading=ft.IconButton(
@@ -87,7 +92,7 @@ async def main(page: ft.Page) -> None:
 
     page.on_route_change = route_change
     page.on_view_pop = view_pop
-    await page.push_route(page.route or "/")
+    route_change()
 
 
 if __name__ == "__main__":

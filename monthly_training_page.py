@@ -1,7 +1,6 @@
 """Monthly training submission and history page."""
 
 from datetime import date, datetime
-from pathlib import Path
 
 import flet as ft
 
