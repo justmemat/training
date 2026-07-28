@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from datetime import date
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import data_store
 from team_member_service import display_name, role_sort_key, upsert_member
@@ -30,6 +30,9 @@ from monthly_training_service import (
     MONTHLY_REPORT_DIRECTORY,
     MONTHLY_REPORT_NAME,
     create_session_record,
+    generate_monthly_history_report,
+    open_monthly_history_report,
+    open_presentation_file,
     sorted_sessions,
 )
 from training_history_service import (
@@ -461,6 +464,48 @@ class MonthlyTrainingServiceTests(unittest.TestCase):
         )
         self.assertEqual(MONTHLY_REPORT_NAME, "Monthly Training History.xlsx")
 
+    def test_history_report_has_newest_year_tabs_first(self) -> None:
+        from openpyxl import load_workbook
+
+        records = [
+            {
+                "date": "2025-05-01",
+                "instructor_id": "one",
+                "attendee_ids": ["one"],
+                "file_name": "Older.pptx",
+            },
+            {
+                "date": "2026-06-01",
+                "instructor_id": "one",
+                "attendee_ids": ["one", "two"],
+                "file_name": "Newer.pptx",
+            },
+        ]
+        members = [
+            {"id": "one", "first_name": "Jamie", "last_name": "Rivera"},
+            {"id": "two", "first_name": "Morgan", "last_name": "Lee"},
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            report = generate_monthly_history_report(
+                records, members, output_directory=Path(directory)
+            )
+            workbook = load_workbook(report)
+
+        self.assertEqual(workbook.sheetnames, ["2026", "2025"])
+        self.assertEqual(workbook["2026"]["D4"].value, "Newer.pptx")
+        self.assertEqual(workbook["2025"]["D4"].value, "Older.pptx")
+
+    def test_generated_history_report_uses_operating_system_opener(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            report = Path(directory) / MONTHLY_REPORT_NAME
+            report.touch()
+            opener = Mock()
+
+            result = open_monthly_history_report(report, opener=opener)
+
+            self.assertEqual(result, report)
+            opener.assert_called_once_with(str(report))
+
     def test_session_records_file_date_instructor_and_attendance(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             presentation = Path(directory) / "presentation.pdf"
@@ -483,6 +528,23 @@ class MonthlyTrainingServiceTests(unittest.TestCase):
             [{"date": "2026-07-01"}, "invalid", {"date": "2026-08-01"}]
         )
         self.assertEqual([session["date"] for session in sessions], ["2026-08-01", "2026-07-01"])
+
+    def test_presentation_file_uses_operating_system_opener(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            presentation = Path(directory) / "lesson.pptx"
+            presentation.touch()
+            opener = Mock()
+
+            result = open_presentation_file(
+                {"presentation_path": str(presentation)}, opener=opener
+            )
+
+            self.assertEqual(result, presentation)
+            opener.assert_called_once_with(str(presentation))
+
+    def test_missing_presentation_file_cannot_be_opened(self) -> None:
+        with self.assertRaisesRegex(FileNotFoundError, "could not be found"):
+            open_presentation_file({"presentation_path": "missing.pptx"}, opener=Mock())
 
 
 if __name__ == "__main__":
