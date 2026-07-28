@@ -51,10 +51,27 @@ class FletCompatibilityTests(unittest.TestCase):
                     parents[call], ast.Await, f"Unawaited push_route in {filename}"
                 )
 
+    def test_dialogs_use_supported_page_api(self) -> None:
+        for filename in UI_FILES:
+            tree = ast.parse(Path(filename).read_text(encoding="utf-8"), filename)
+            unsupported_calls = [
+                node.func.attr
+                for node in ast.walk(tree)
+                if isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id == "page"
+                and node.func.attr in {"open", "close"}
+            ]
+            self.assertEqual(
+                unsupported_calls,
+                [],
+                f"Unsupported dialog API used in {filename}",
+            )
+
     def test_all_views_build_with_flet_0863(self) -> None:
         page = Mock(spec=ft.Page)
         with (
-            patch("monthly_training_page.load_records", return_value=[]),
             patch("team_members_page.load_records", return_value=[]),
             patch("trainees_page.load_records", return_value=[]),
         ):
@@ -66,6 +83,23 @@ class FletCompatibilityTests(unittest.TestCase):
             ]
 
         self.assertTrue(all(isinstance(view, ft.View) for view in views))
+
+    def test_monthly_training_button_opens_success_dialog(self) -> None:
+        page = Mock(spec=ft.Page)
+        view = build_monthly_training_view(page)
+
+        self.assertEqual(len(view.controls), 1)
+        submit_button = view.controls[0]
+        self.assertIsInstance(submit_button, ft.FilledButton)
+        self.assertEqual(submit_button.content, "Submit Training Record")
+
+        submit_button.on_click(Mock(spec=ft.ControlEvent))
+
+        page.show_dialog.assert_called_once()
+        dialog = page.show_dialog.call_args.args[0]
+        self.assertIsInstance(dialog, ft.AlertDialog)
+        self.assertEqual(dialog.title.value, "Success")
+        self.assertEqual(dialog.content.value, "The change was successful.")
 
 
 class FletStartupTests(unittest.IsolatedAsyncioTestCase):

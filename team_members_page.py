@@ -58,7 +58,7 @@ def build_team_members_view(page: ft.Page) -> ft.View:
         error_text = ft.Text(color=ft.Colors.RED_700, visible=False)
 
         def close_dialog(_: ft.ControlEvent | None = None) -> None:
-            page.close(dialog)
+            page.pop_dialog()
 
         def save_member(_: ft.ControlEvent) -> None:
             try:
@@ -105,12 +105,12 @@ def build_team_members_view(page: ft.Page) -> ft.View:
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
-        page.open(dialog)
+        page.show_dialog(dialog)
 
     def confirm_delete(member: dict) -> None:
         def delete_member(_: ft.ControlEvent) -> None:
             members.remove(member)
-            page.close(dialog)
+            page.pop_dialog()
             persist_and_refresh()
 
         dialog = ft.AlertDialog(
@@ -121,7 +121,7 @@ def build_team_members_view(page: ft.Page) -> ft.View:
                 "from the team?"
             ),
             actions=[
-                ft.TextButton("Cancel", on_click=lambda _: page.close(dialog)),
+                ft.TextButton("Cancel", on_click=lambda _: page.pop_dialog()),
                 ft.FilledButton(
                     "Remove",
                     icon=ft.Icons.DELETE,
@@ -130,7 +130,7 @@ def build_team_members_view(page: ft.Page) -> ft.View:
                 ),
             ],
         )
-        page.open(dialog)
+        page.show_dialog(dialog)
 
     def member_row(member: dict) -> ft.Container:
         roles: list[ft.Control] = []
