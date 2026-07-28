@@ -1,4 +1,6 @@
-"""Landing page for the OSF Training application."""
+"""Landing page for the ATLAS application."""
+
+import asyncio
 
 import flet as ft
 
@@ -7,7 +9,24 @@ def _navigation_card(
     page: ft.Page, icon: str, title: str, description: str, route: str
 ) -> ft.Container:
     async def navigate(_: ft.ControlEvent) -> None:
+        connecting = ft.AlertDialog(
+            modal=True,
+            content=ft.Row(
+                controls=[
+                    ft.ProgressRing(width=28, height=28),
+                    ft.Text("Connecting to the shared network…", size=16),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+                spacing=18,
+            ),
+        )
+        page.show_dialog(connecting)
+        page.update()
+        # Give the desktop client an opportunity to paint the progress dialog
+        # before the destination view performs its network-backed file reads.
+        await asyncio.sleep(0.1)
         await page.push_route(route)
+        page.pop_dialog()
 
     return ft.Container(
         content=ft.Column(
@@ -48,11 +67,15 @@ def build_landing_view(page: ft.Page) -> ft.View:
         route="/",
         bgcolor=ft.Colors.INDIGO_50,
         padding=40,
+        appbar=ft.AppBar(
+            title=ft.Text("Assessment, Training, Logging, and Analytics System"),
+            center_title=True,
+        ),
         controls=[
             ft.Column(
                 controls=[
                     ft.Text(
-                        "OSF Training",
+                        "ATLAS",
                         size=38,
                         weight=ft.FontWeight.BOLD,
                         color=ft.Colors.INDIGO_900,
