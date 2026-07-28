@@ -1,11 +1,12 @@
 """Compatibility checks for the Flet 0.86.3 user interface."""
 
 import ast
+import asyncio
 import inspect
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import flet as ft
 
@@ -115,8 +116,11 @@ class FletCompatibilityTests(unittest.TestCase):
                 return_value=report_path,
             ) as generate_report,
             patch("monthly_training_page.open_monthly_history_report") as open_report,
+            patch("monthly_training_page.FileProgressDialog") as progress_class,
         ):
-            report_button.on_click(Mock(spec=ft.ControlEvent))
+            progress = progress_class.return_value
+            progress.set_step = AsyncMock()
+            asyncio.run(report_button.on_click(Mock(spec=ft.ControlEvent)))
 
         generate_report.assert_called_once_with([], members)
         open_report.assert_called_once_with(report_path)

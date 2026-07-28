@@ -1,13 +1,17 @@
 """Team Members management page."""
 
+import asyncio
+
 import flet as ft
 
 from data_store import load_records, save_records
+from progress_dialog import FileProgressDialog
 from team_member_service import display_name, role_sort_key, upsert_member
 
 
 def build_team_members_view(page: ft.Page) -> ft.View:
     """Build the team-member list and its add/edit/delete interactions."""
+
     async def navigate_home(_: ft.ControlEvent) -> None:
         await page.push_route("/")
 
@@ -19,11 +23,6 @@ def build_team_members_view(page: ft.Page) -> ft.View:
         italic=True,
         text_align=ft.TextAlign.CENTER,
     )
-
-    def persist_and_refresh() -> None:
-        save_records("team_members", members)
-        render_members()
-        page.update()
 
     def open_member_dialog(member: dict | None = None) -> None:
         editing = member is not None
@@ -60,7 +59,7 @@ def build_team_members_view(page: ft.Page) -> ft.View:
         def close_dialog(_: ft.ControlEvent | None = None) -> None:
             page.pop_dialog()
 
-        def save_member(_: ft.ControlEvent) -> None:
+        async def save_member(_: ft.ControlEvent) -> None:
             try:
                 upsert_member(
                     members,
@@ -78,8 +77,19 @@ def build_team_members_view(page: ft.Page) -> ft.View:
                 error_text.visible = True
                 dialog.update()
                 return
-            close_dialog()
-            persist_and_refresh()
+            progress_ui = FileProgressDialog(
+                page,
+                "Updating team member" if editing else "Adding team member",
+                ["Validate team member", "Save team member file"],
+            )
+            progress_ui.show(replace_current=True)
+            await progress_ui.set_step(0, complete=True)
+            await progress_ui.set_step(1)
+            await asyncio.to_thread(save_records, "team_members", members)
+            await progress_ui.set_step(1, complete=True)
+            render_members()
+            page.update()
+            progress_ui.close()
 
         dialog = ft.AlertDialog(
             modal=True,
@@ -108,10 +118,21 @@ def build_team_members_view(page: ft.Page) -> ft.View:
         page.show_dialog(dialog)
 
     def confirm_delete(member: dict) -> None:
-        def delete_member(_: ft.ControlEvent) -> None:
+        async def delete_member(_: ft.ControlEvent) -> None:
+            progress_ui = FileProgressDialog(
+                page,
+                "Removing team member",
+                ["Remove team member", "Save team member file"],
+            )
+            progress_ui.show(replace_current=True)
+            await progress_ui.set_step(0)
             members.remove(member)
-            page.pop_dialog()
-            persist_and_refresh()
+            await progress_ui.set_step(1)
+            await asyncio.to_thread(save_records, "team_members", members)
+            await progress_ui.set_step(1, complete=True)
+            render_members()
+            page.update()
+            progress_ui.close()
 
         dialog = ft.AlertDialog(
             modal=True,
@@ -135,7 +156,9 @@ def build_team_members_view(page: ft.Page) -> ft.View:
     def member_row(member: dict) -> ft.Container:
         roles: list[ft.Control] = []
         if member.get("is_manager"):
-            roles.append(ft.Chip(label=ft.Text("Manager"), leading=ft.Icon(ft.Icons.BADGE)))
+            roles.append(
+                ft.Chip(label=ft.Text("Manager"), leading=ft.Icon(ft.Icons.BADGE))
+            )
         if member.get("is_training_lead"):
             roles.append(
                 ft.Chip(
@@ -181,7 +204,9 @@ def build_team_members_view(page: ft.Page) -> ft.View:
                     ft.IconButton(
                         icon=ft.Icons.EDIT,
                         tooltip="Edit team member",
-                        on_click=lambda _, selected=member: open_member_dialog(selected),
+                        on_click=lambda _, selected=member: open_member_dialog(
+                            selected
+                        ),
                     ),
                     ft.IconButton(
                         icon=ft.Icons.DELETE_OUTLINE,
@@ -199,8 +224,7 @@ def build_team_members_view(page: ft.Page) -> ft.View:
 
     def render_members() -> None:
         member_list.controls = [
-            member_row(member)
-            for member in sorted(members, key=role_sort_key)
+            member_row(member) for member in sorted(members, key=role_sort_key)
         ]
         empty_message.visible = not members
 

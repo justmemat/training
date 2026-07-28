@@ -1,5 +1,6 @@
 """Monthly training entry and history page."""
 
+import asyncio
 from datetime import date, datetime
 import flet as ft
 
@@ -13,6 +14,7 @@ from monthly_training_service import (
 )
 from team_member_service import role_sort_key
 from training_directory_service import full_name
+from progress_dialog import FileProgressDialog
 
 
 def build_monthly_training_view(page: ft.Page) -> ft.View:
@@ -50,7 +52,11 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
         attendees = []
         for member_id in record.get("attendee_ids", []):
             member = members_by_id.get(str(member_id))
-            initials = str(member.get("operating_initials", "")).strip().upper() if member else ""
+            initials = (
+                str(member.get("operating_initials", "")).strip().upper()
+                if member
+                else ""
+            )
             attendees.append(initials or "Unknown")
 
         def open_presentation(_: ft.ControlEvent) -> None:
@@ -60,12 +66,21 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
                 page.show_dialog(ft.SnackBar(ft.Text(str(error))))
 
         def confirm_delete(_: ft.ControlEvent) -> None:
-            def delete_record(_: ft.ControlEvent) -> None:
+            async def delete_record(_: ft.ControlEvent) -> None:
+                progress_ui = FileProgressDialog(
+                    page,
+                    "Deleting monthly training entry",
+                    ["Remove training entry", "Save monthly training history"],
+                )
+                progress_ui.show(replace_current=True)
+                await progress_ui.set_step(0)
                 sessions.remove(record)
-                save_records("monthly_training", sessions)
-                page.pop_dialog()
+                await progress_ui.set_step(1)
+                await asyncio.to_thread(save_records, "monthly_training", sessions)
+                await progress_ui.set_step(1, complete=True)
                 render_sessions()
                 page.update()
+                progress_ui.close()
 
             page.show_dialog(
                 ft.AlertDialog(
@@ -113,7 +128,8 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
                                 color=ft.Colors.GREY_700,
                             ),
                             ft.Text(
-                                "Attendees: " + (", ".join(attendees) or "None recorded"),
+                                "Attendees: "
+                                + (", ".join(attendees) or "None recorded"),
                                 color=ft.Colors.GREY_700,
                             ),
                         ],
@@ -146,7 +162,9 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
         )
 
     def render_sessions() -> None:
-        session_list.controls = [session_card(record) for record in sorted_sessions(sessions)]
+        session_list.controls = [
+            session_card(record) for record in sorted_sessions(sessions)
+        ]
         empty_message.visible = not sessions
 
     def open_training_dialog(record: dict | None = None) -> None:
@@ -166,7 +184,9 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
             label="Instructor",
             hint_text="Select one instructor",
             options=[
-                ft.dropdown.Option(key=str(member.get("id", "")), text=member_name(member))
+                ft.dropdown.Option(
+                    key=str(member.get("id", "")), text=member_name(member)
+                )
                 for member in ordered_members
             ],
             value=str(record.get("instructor_id", "")) if record else None,
@@ -184,7 +204,9 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
                 str(member.get("id", "")),
                 ft.Checkbox(
                     label=member_name(member),
-                    value=bool(record and member.get("id") in record.get("attendee_ids", [])),
+                    value=bool(
+                        record and member.get("id") in record.get("attendee_ids", [])
+                    ),
                 ),
             )
             for member in ordered_members
@@ -233,7 +255,7 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
         )
         date_field.on_click = lambda _: page.show_dialog(date_picker)
 
-        def submit(_: ft.ControlEvent) -> None:
+        async def submit(_: ft.ControlEvent) -> None:
             try:
                 created_record = create_session_record(
                     presentation_date=selected_date,
@@ -254,14 +276,25 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
                 sessions[sessions.index(record)] = created_record
             else:
                 sessions.append(created_record)
-            save_records("monthly_training", sessions)
-            page.pop_dialog()
+            progress_ui = FileProgressDialog(
+                page,
+                "Updating monthly training" if editing else "Saving monthly training",
+                ["Validate training details", "Save monthly training history"],
+            )
+            progress_ui.show(replace_current=True)
+            await progress_ui.set_step(0, complete=True)
+            await progress_ui.set_step(1)
+            await asyncio.to_thread(save_records, "monthly_training", sessions)
+            await progress_ui.set_step(1, complete=True)
             render_sessions()
             page.update()
+            progress_ui.close()
 
         dialog = ft.AlertDialog(
             modal=True,
-            title=ft.Text("Edit monthly training" if editing else "Track monthly training"),
+            title=ft.Text(
+                "Edit monthly training" if editing else "Track monthly training"
+            ),
             content=ft.Container(
                 content=ft.Column(
                     [
@@ -270,7 +303,9 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
                             [
                                 file_field,
                                 ft.OutlinedButton(
-                                    "Browse", icon=ft.Icons.FOLDER_OPEN, on_click=choose_file
+                                    "Browse",
+                                    icon=ft.Icons.FOLDER_OPEN,
+                                    on_click=choose_file,
                                 ),
                             ]
                         ),
@@ -309,12 +344,27 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
         )
         page.show_dialog(dialog)
 
-    def generate_report(_: ft.ControlEvent) -> None:
+    async def generate_report(_: ft.ControlEvent) -> None:
+        progress_ui = FileProgressDialog(
+            page,
+            "Creating monthly training report",
+            ["Collect monthly training", "Write Excel workbook", "Open report"],
+        )
+        progress_ui.show()
         try:
-            report_path = generate_monthly_history_report(sessions, members)
+            await progress_ui.set_step(0)
+            await progress_ui.set_step(1)
+            report_path = await asyncio.to_thread(
+                generate_monthly_history_report, sessions, members
+            )
+            await progress_ui.set_step(1, complete=True)
+            await progress_ui.set_step(2)
             open_monthly_history_report(report_path)
+            await progress_ui.set_step(2, complete=True)
         except (FileNotFoundError, OSError, PermissionError) as error:
-            page.show_dialog(ft.SnackBar(ft.Text(str(error))))
+            progress_ui.show_error(error)
+            return
+        progress_ui.close()
 
     render_sessions()
     return ft.View(

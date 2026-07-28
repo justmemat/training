@@ -8,7 +8,13 @@ from uuid import uuid4
 
 
 def create_history_record(
-    *, trainee_id: str, instructor_id: str, report_date: date, report_path: str
+    *,
+    trainee_id: str,
+    instructor_id: str,
+    report_date: date,
+    report_path: str,
+    training_summary: str = "",
+    instructor_comments: str = "",
 ) -> dict[str, Any]:
     """Create a persistent history entry for a generated daily report."""
     if not trainee_id or not instructor_id:
@@ -20,6 +26,8 @@ def create_history_record(
         "date": report_date.isoformat(),
         "report_path": report_path,
         "file_name": PureWindowsPath(report_path).name,
+        "training_summary": training_summary,
+        "instructor_comments": instructor_comments,
     }
 
 

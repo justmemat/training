@@ -24,6 +24,7 @@ from training_history_service import (
     trainee_history,
 )
 from history_report_service import generate_history_report
+from progress_dialog import FileProgressDialog
 from training_report_service import create_training_report
 
 
@@ -192,19 +193,9 @@ def build_trainees_view(page: ft.Page) -> ft.View:
             leading_icon=ft.Icons.BADGE,
         )
         message = ft.Text(visible=False)
-        creation_progress = ft.ProgressBar(
-            visible=False,
-            color=ft.Colors.INDIGO_600,
-            bgcolor=ft.Colors.INDIGO_100,
-        )
         directory_already_exists = trainee_directory_exists(member)
-        history_report_progress = ft.ProgressBar(
-            visible=False,
-            color=ft.Colors.INDIGO_600,
-            bgcolor=ft.Colors.INDIGO_100,
-        )
 
-        def update_training_profile() -> bool:
+        def update_training_profile(*, persist: bool = True) -> bool:
             try:
                 update_profile(
                     profile,
@@ -221,53 +212,65 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                 message.visible = True
                 details.update()
                 return False
-            save_all()
+            if persist:
+                save_all()
             return True
 
-        def save_training(_: ft.ControlEvent) -> None:
-            if not update_training_profile():
+        async def save_training(_: ft.ControlEvent) -> None:
+            if not update_training_profile(persist=False):
                 return
+            progress_ui = FileProgressDialog(
+                page,
+                "Saving trainee information",
+                ["Validate training information", "Save trainee profile"],
+            )
+            progress_ui.show()
+            await progress_ui.set_step(0, complete=True)
+            await progress_ui.set_step(1)
+            await asyncio.to_thread(save_all)
+            await progress_ui.set_step(1, complete=True)
             render_details()
             page.update()
-            page.show_dialog(ft.SnackBar(ft.Text("Training information saved.")))
+            progress_ui.close()
 
-        def build_training_directory(_: ft.ControlEvent) -> None:
+        async def build_training_directory(_: ft.ControlEvent) -> None:
             if not update_training_profile():
                 return
             create_directory_button.disabled = True
-            creation_progress.visible = True
-            message.value = "Creating training directory and populating the guide..."
-            message.color = ft.Colors.INDIGO_700
-            message.visible = True
-            details.update()
+            progress_ui = FileProgressDialog(
+                page,
+                "Creating trainee directory",
+                [
+                    "Validate trainee profile",
+                    "Create folders",
+                    "Populate training guide",
+                ],
+            )
+            progress_ui.show()
             try:
-                output_path = create_training_directory(member, profile, members)
+                await progress_ui.set_step(0)
+                await progress_ui.set_step(1)
+                output_path = await asyncio.to_thread(
+                    create_training_directory, member, profile, members
+                )
+                await progress_ui.set_step(2, complete=True)
             except ModuleNotFoundError as error:
                 if error.name != "pypdf":
                     raise
-                message.value = (
+                progress_ui.show_error(
                     "PDF support is not installed. Close the app, open Command Prompt "
                     "in the application folder, and run: "
                     "python -m pip install -r requirements.txt"
                 )
-                message.color = ft.Colors.RED_700
-                message.visible = True
-                creation_progress.visible = False
                 create_directory_button.disabled = trainee_directory_exists(member)
-                details.update()
                 return
             except (FileNotFoundError, OSError, ValueError) as error:
-                message.value = str(error)
-                message.color = ft.Colors.RED_700
-                message.visible = True
-                creation_progress.visible = False
+                progress_ui.show_error(error)
                 create_directory_button.disabled = trainee_directory_exists(member)
-                details.update()
                 return
             message.value = f"Training directory created: {output_path}"
             message.color = ft.Colors.GREEN_700
             message.visible = True
-            creation_progress.visible = False
             create_directory_button.disabled = True
             daily_report_button.disabled = False
             daily_report_button.tooltip = "Create a populated daily training report"
@@ -276,6 +279,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                 "Create or update the Excel training history report"
             )
             details.update()
+            progress_ui.close()
 
         create_directory_button = ft.OutlinedButton(
             "Create training directory",
@@ -325,60 +329,127 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                     except (FileNotFoundError, OSError, ValueError) as error:
                         page.show_dialog(ft.SnackBar(ft.Text(str(error))))
 
+                def confirm_delete(
+                    _: ft.ControlEvent, history_entry: dict = entry
+                ) -> None:
+                    async def delete_entry(_: ft.ControlEvent) -> None:
+                        progress_ui = FileProgressDialog(
+                            page,
+                            "Deleting daily training entry",
+                            ["Remove history entry", "Save training history"],
+                        )
+                        progress_ui.show(replace_current=True)
+                        try:
+                            await progress_ui.set_step(0)
+                            history_records.remove(history_entry)
+                            await progress_ui.set_step(1)
+                            await asyncio.to_thread(
+                                save_records, "training_history", history_records
+                            )
+                            await progress_ui.set_step(1, complete=True)
+                        except (OSError, ValueError) as error:
+                            progress_ui.show_error(error)
+                            return
+                        render_history()
+                        details.update()
+                        progress_ui.close()
+
+                    page.show_dialog(
+                        ft.AlertDialog(
+                            modal=True,
+                            title=ft.Text("Delete training entry?"),
+                            content=ft.Text(
+                                f"Delete {history_entry.get('file_name', 'this training entry')}?"
+                            ),
+                            actions=[
+                                ft.TextButton(
+                                    "Cancel", on_click=lambda _: page.pop_dialog()
+                                ),
+                                ft.FilledButton(
+                                    "Delete",
+                                    icon=ft.Icons.DELETE,
+                                    style=ft.ButtonStyle(bgcolor=ft.Colors.RED_600),
+                                    on_click=delete_entry,
+                                ),
+                            ],
+                        )
+                    )
+
                 history_list.controls.append(
-                    ft.Container(
-                        content=ft.Row(
-                            [
-                                ft.IconButton(
-                                    icon=ft.Icons.DESCRIPTION,
-                                    icon_color=ft.Colors.INDIGO_500,
-                                    tooltip=f"Open {entry.get('file_name', 'training report')}",
-                                    on_click=open_report,
-                                ),
-                                ft.Column(
-                                    [
-                                        ft.Text(
-                                            format_start_date(
-                                                str(entry.get("date", ""))
+                    ft.ContextMenu(
+                        content=ft.Container(
+                            content=ft.Row(
+                                [
+                                    ft.IconButton(
+                                        icon=ft.Icons.DESCRIPTION,
+                                        icon_color=ft.Colors.INDIGO_500,
+                                        tooltip=f"Open {entry.get('file_name', 'training report')}",
+                                        on_click=open_report,
+                                    ),
+                                    ft.Column(
+                                        [
+                                            ft.Text(
+                                                format_start_date(
+                                                    str(entry.get("date", ""))
+                                                ),
+                                                weight=ft.FontWeight.BOLD,
                                             ),
-                                            weight=ft.FontWeight.BOLD,
-                                        ),
-                                        ft.Text(
-                                            f"Instructor: {instructor_name}",
-                                            color=ft.Colors.GREY_700,
-                                        ),
-                                        ft.Text(
-                                            str(
-                                                entry.get("file_name")
-                                                or Path(
-                                                    str(entry.get("report_path", ""))
-                                                ).name
+                                            ft.Text(
+                                                f"Instructor: {instructor_name}",
+                                                color=ft.Colors.GREY_700,
                                             ),
-                                            size=12,
-                                            color=ft.Colors.GREY_500,
-                                        ),
-                                    ],
-                                    spacing=2,
-                                    expand=True,
-                                ),
-                            ]
+                                            ft.Text(
+                                                str(
+                                                    entry.get("file_name")
+                                                    or Path(
+                                                        str(
+                                                            entry.get("report_path", "")
+                                                        )
+                                                    ).name
+                                                ),
+                                                size=12,
+                                                color=ft.Colors.GREY_500,
+                                            ),
+                                        ],
+                                        spacing=2,
+                                        expand=True,
+                                    ),
+                                ]
+                            ),
+                            bgcolor=ft.Colors.INDIGO_50,
+                            border_radius=8,
+                            padding=12,
                         ),
-                        bgcolor=ft.Colors.INDIGO_50,
-                        border_radius=8,
-                        padding=12,
+                        secondary_items=[
+                            ft.PopupMenuItem(
+                                content="Edit",
+                                icon=ft.Icons.EDIT,
+                                on_click=lambda _, history_entry=entry: open_daily_report_dialog(
+                                    history_entry
+                                ),
+                            ),
+                            ft.PopupMenuItem(
+                                content="Delete",
+                                icon=ft.Icons.DELETE_OUTLINE,
+                                on_click=confirm_delete,
+                            ),
+                        ],
+                        tooltip="Right-click to edit or delete",
                     )
                 )
 
         render_history()
 
-        def open_daily_report_dialog() -> None:
+        def open_daily_report_dialog(record: dict | None = None) -> None:
             if not update_training_profile():
                 return
+            editing = record is not None
             instructor = ft.Dropdown(
                 label="Instructor",
                 options=member_dropdown_options()[1:],
                 width=420,
                 leading_icon=ft.Icons.PERSON,
+                value=str(record.get("instructor_id", "")) if record else None,
             )
             training_summary = ft.TextField(
                 label="Training Summary",
@@ -386,6 +457,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                 min_lines=4,
                 max_lines=8,
                 width=560,
+                value=str(record.get("training_summary", "")) if record else "",
             )
             instructor_comments = ft.TextField(
                 label="Instructor Comments (optional)",
@@ -393,8 +465,13 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                 min_lines=4,
                 max_lines=8,
                 width=560,
+                value=str(record.get("instructor_comments", "")) if record else "",
             )
-            selected_report_date = date.today()
+            selected_report_date = (
+                date.fromisoformat(str(record.get("date", "")))
+                if record
+                else date.today()
+            )
             report_date_field = ft.TextField(
                 label="Report date",
                 value=selected_report_date.strftime("%d %b %Y"),
@@ -429,76 +506,25 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                 generate_button.disabled = True
                 dialog.update()
 
-                step_labels = [
-                    "Validate report details",
-                    "Create and save PDF report",
-                    "Record report in training history",
-                    "Refresh trainee report history",
-                ]
-                step_texts = [
-                    ft.Text(f"○ {label}", color=ft.Colors.GREY_600)
-                    for label in step_labels
-                ]
-                progress = ft.ProgressBar(
-                    value=0,
-                    height=12,
-                    color=ft.Colors.INDIGO_600,
-                    bgcolor=ft.Colors.INDIGO_100,
-                    border_radius=6,
-                )
-                progress_message = ft.Text(
-                    "Preparing daily training report...",
-                    weight=ft.FontWeight.BOLD,
-                    color=ft.Colors.INDIGO_700,
-                )
-                progress_dialog = ft.AlertDialog(
-                    modal=True,
-                    title=ft.Row(
-                        [
-                            ft.ProgressRing(width=28, height=28, stroke_width=4),
-                            ft.Text("Creating daily training report"),
-                        ],
-                        spacing=14,
+                progress_ui = FileProgressDialog(
+                    page,
+                    (
+                        "Updating daily training report"
+                        if editing
+                        else "Creating daily training report"
                     ),
-                    content=ft.Container(
-                        content=ft.Column(
-                            [progress_message, progress, *step_texts],
-                            tight=True,
-                            spacing=12,
-                        ),
-                        width=500,
-                        padding=8,
-                    ),
+                    [
+                        "Validate report details",
+                        "Create and save PDF report",
+                        "Record report in training history",
+                        "Refresh trainee report history",
+                    ],
                 )
-
-                # Replace the entry form with a prominent, dedicated progress display.
-                page.pop_dialog()
-                page.show_dialog(progress_dialog)
-
-                async def show_step(index: int, *, complete: bool = False) -> None:
-                    for step_index, (step, label) in enumerate(
-                        zip(step_texts, step_labels)
-                    ):
-                        if step_index < index or (complete and step_index == index):
-                            step.value = f"✓ {label}"
-                            step.color = ft.Colors.GREEN_700
-                            step.weight = ft.FontWeight.W_600
-                        elif step_index == index:
-                            step.value = f"● {label}"
-                            step.color = ft.Colors.INDIGO_700
-                            step.weight = ft.FontWeight.W_600
-                    progress.value = (index + (1 if complete else 0)) / len(step_labels)
-                    progress_message.value = (
-                        "Daily training report is ready."
-                        if complete and index == len(step_labels) - 1
-                        else step_labels[index] + "..."
-                    )
-                    progress_dialog.update()
-                    await asyncio.sleep(0)
+                progress_ui.show(replace_current=True)
 
                 try:
-                    await show_step(0)
-                    await show_step(1)
+                    await progress_ui.set_step(0)
+                    await progress_ui.set_step(1)
                     output_path = await asyncio.to_thread(
                         create_training_report,
                         member,
@@ -509,49 +535,56 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                         instructor_comments=instructor_comments.value or "",
                         report_date=selected_report_date,
                     )
-                    await show_step(1, complete=True)
-                    await show_step(2)
-                    history_records.append(
-                        create_history_record(
-                            trainee_id=str(member.get("id", "")),
-                            instructor_id=instructor.value or "",
-                            report_date=selected_report_date,
-                            report_path=str(output_path),
-                        )
+                    await progress_ui.set_step(1, complete=True)
+                    await progress_ui.set_step(2)
+                    updated_record = create_history_record(
+                        trainee_id=str(member.get("id", "")),
+                        instructor_id=instructor.value or "",
+                        report_date=selected_report_date,
+                        report_path=str(output_path),
+                        training_summary=training_summary.value or "",
+                        instructor_comments=instructor_comments.value or "",
                     )
+                    if editing:
+                        updated_record["id"] = record.get("id", updated_record["id"])
+                        history_records[history_records.index(record)] = updated_record
+                    else:
+                        history_records.append(updated_record)
                     await asyncio.to_thread(
                         save_records, "training_history", history_records
                     )
-                    await show_step(2, complete=True)
+                    await progress_ui.set_step(2, complete=True)
                 except ModuleNotFoundError as error:
                     if error.name != "pypdf":
                         raise
-                    progress_message.value = (
+                    progress_ui.show_error(
                         "PDF support is not installed. Run: "
                         "python -m pip install -r requirements.txt"
                     )
+                    return
                 except (FileNotFoundError, OSError, ValueError) as error:
-                    progress_message.value = str(error)
+                    progress_ui.show_error(error)
+                    return
                 else:
-                    await show_step(3)
+                    await progress_ui.set_step(3)
                     render_history()
                     details.update()
-                    await show_step(3, complete=True)
-                    page.pop_dialog()
+                    await progress_ui.set_step(3, complete=True)
+                    progress_ui.close()
                     return
-                progress_message.color = ft.Colors.RED_700
-                progress.value = None
-                progress_dialog.actions = [
-                    ft.TextButton("Close", on_click=lambda _: page.pop_dialog())
-                ]
-                progress_dialog.update()
 
             generate_button = ft.FilledButton(
-                "Create report", icon=ft.Icons.PICTURE_AS_PDF, on_click=create_report
+                "Save report" if editing else "Create report",
+                icon=ft.Icons.PICTURE_AS_PDF,
+                on_click=create_report,
             )
             dialog = ft.AlertDialog(
                 modal=True,
-                title=ft.Text("Add daily training report"),
+                title=ft.Text(
+                    "Edit daily training report"
+                    if editing
+                    else "Add daily training report"
+                ),
                 content=ft.Container(
                     content=ft.Column(
                         [
@@ -711,35 +744,41 @@ def build_trainees_view(page: ft.Page) -> ft.View:
             "Edit training information", icon=ft.Icons.EDIT, on_click=begin_edit
         )
 
-        def build_history_report(_: ft.ControlEvent) -> None:
+        async def build_history_report(_: ft.ControlEvent) -> None:
             history_report_button.disabled = True
-            history_report_progress.visible = True
-            message.value = "Creating or updating the Excel history report..."
-            message.color = ft.Colors.INDIGO_700
-            message.visible = True
-            details.update()
+            progress_ui = FileProgressDialog(
+                page,
+                "Creating training history report",
+                ["Collect training entries", "Write Excel workbook", "Open report"],
+            )
+            progress_ui.show()
             try:
-                output_path = generate_history_report(
-                    member, profile, members, history_records
+                await progress_ui.set_step(0)
+                await progress_ui.set_step(1)
+                output_path = await asyncio.to_thread(
+                    generate_history_report, member, profile, members, history_records
                 )
+                await progress_ui.set_step(1, complete=True)
+                await progress_ui.set_step(2)
                 open_report_file({"report_path": str(output_path)})
+                await progress_ui.set_step(2, complete=True)
             except ModuleNotFoundError as error:
                 if error.name != "openpyxl":
                     raise
-                message.value = (
+                progress_ui.show_error(
                     "Excel support is not installed. Run: "
                     "python -m pip install -r requirements.txt"
                 )
-                message.color = ft.Colors.RED_700
+                return
             except (FileNotFoundError, OSError, ValueError) as error:
-                message.value = str(error)
-                message.color = ft.Colors.RED_700
+                progress_ui.show_error(error)
+                return
             else:
                 message.value = f"History report created and opened: {output_path}"
                 message.color = ft.Colors.GREEN_700
-            history_report_progress.visible = False
             history_report_button.disabled = not trainee_directory_exists(member)
             details.update()
+            progress_ui.close()
 
         history_report_button = ft.OutlinedButton(
             "Generate History Report",
@@ -802,8 +841,6 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                             ],
                             wrap=True,
                         ),
-                        creation_progress,
-                        history_report_progress,
                         ft.Divider(height=28),
                         ft.Text(
                             "Training History",
@@ -859,7 +896,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
         )
         error = ft.Text("Select a team member.", color=ft.Colors.RED_700, visible=False)
 
-        def add_trainee(_: ft.ControlEvent) -> None:
+        async def add_trainee(_: ft.ControlEvent) -> None:
             member = next(
                 (item for item in available if item.get("id") == selection.value), None
             )
@@ -867,11 +904,20 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                 error.visible = True
                 dialog.update()
                 return
+            progress_ui = FileProgressDialog(
+                page,
+                "Assigning trainee",
+                ["Create trainee profile", "Save trainee files"],
+            )
+            progress_ui.show(replace_current=True)
+            await progress_ui.set_step(0)
             member["is_trainee"] = True
             ensure_profile(profiles, member["id"])
-            save_all()
-            page.pop_dialog()
+            await progress_ui.set_step(1)
+            await asyncio.to_thread(save_all)
+            await progress_ui.set_step(1, complete=True)
             refresh_selector(member["id"])
+            progress_ui.close()
             page.update()
 
         dialog = ft.AlertDialog(
