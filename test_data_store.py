@@ -395,12 +395,18 @@ class TrainingHistoryServiceTests(unittest.TestCase):
             instructor_id="instructor-1",
             report_date=date(2026, 7, 27),
             report_path=r"T:\Reports\report.pdf",
+            training_summary="Reviewed intake workflow",
+            instructor_comments="Ready for independent practice",
         )
         self.assertEqual(record["trainee_id"], "trainee-1")
         self.assertEqual(record["instructor_id"], "instructor-1")
         self.assertEqual(record["date"], "2026-07-27")
         self.assertEqual(record["file_name"], "report.pdf")
         self.assertEqual(record["report_path"], r"T:\Reports\report.pdf")
+        self.assertEqual(record["training_summary"], "Reviewed intake workflow")
+        self.assertEqual(
+            record["instructor_comments"], "Ready for independent practice"
+        )
 
     def test_trainee_history_is_filtered_and_newest_first(self) -> None:
         records = [
