@@ -38,7 +38,7 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
         initials = str(member.get("operating_initials", "")).strip()
         return f"{name} ({initials})" if initials else name
 
-    def session_card(record: dict) -> ft.Container:
+    def session_card(record: dict) -> ft.Control:
         try:
             displayed_date = date.fromisoformat(str(record.get("date", ""))).strftime(
                 "%d %b %Y"
@@ -57,7 +57,34 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
             except (FileNotFoundError, OSError) as error:
                 page.show_dialog(ft.SnackBar(ft.Text(str(error))))
 
-        return ft.Container(
+        def confirm_delete(_: ft.ControlEvent) -> None:
+            def delete_record(_: ft.ControlEvent) -> None:
+                sessions.remove(record)
+                save_records("monthly_training", sessions)
+                page.pop_dialog()
+                render_sessions()
+                page.update()
+
+            page.show_dialog(
+                ft.AlertDialog(
+                    modal=True,
+                    title=ft.Text("Delete training entry?"),
+                    content=ft.Text(
+                        f"Delete {record.get('file_name', 'this training entry')}?"
+                    ),
+                    actions=[
+                        ft.TextButton("Cancel", on_click=lambda _: page.pop_dialog()),
+                        ft.FilledButton(
+                            "Delete",
+                            icon=ft.Icons.DELETE,
+                            style=ft.ButtonStyle(bgcolor=ft.Colors.RED_600),
+                            on_click=delete_record,
+                        ),
+                    ],
+                )
+            )
+
+        card = ft.Container(
             content=ft.Row(
                 [
                     ft.Container(
@@ -99,17 +126,37 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
             padding=16,
             tooltip=str(record.get("presentation_path", "")),
         )
+        return ft.ContextMenu(
+            content=card,
+            items=[
+                ft.PopupMenuItem(
+                    content="Edit",
+                    icon=ft.Icons.EDIT,
+                    on_click=lambda _: open_training_dialog(record),
+                ),
+                ft.PopupMenuItem(
+                    content="Delete",
+                    icon=ft.Icons.DELETE_OUTLINE,
+                    on_click=confirm_delete,
+                ),
+            ],
+            tooltip="Right-click to edit or delete",
+        )
 
     def render_sessions() -> None:
         session_list.controls = [session_card(record) for record in sorted_sessions(sessions)]
         empty_message.visible = not sessions
 
-    def open_training_dialog(_: ft.ControlEvent) -> None:
-        selected_path = ""
-        selected_date = date.today()
+    def open_training_dialog(record: dict | None = None) -> None:
+        editing = record is not None
+        selected_path = str(record.get("presentation_path", "")) if record else ""
+        selected_date = (
+            date.fromisoformat(str(record.get("date", ""))) if record else date.today()
+        )
         file_field = ft.TextField(
             label="Training file",
             hint_text="Select the file that was presented",
+            value=selected_path,
             read_only=True,
             expand=True,
         )
@@ -120,6 +167,7 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
                 ft.dropdown.Option(key=str(member.get("id", "")), text=member_name(member))
                 for member in ordered_members
             ],
+            value=str(record.get("instructor_id", "")) if record else None,
             width=450,
         )
         date_field = ft.TextField(
@@ -132,11 +180,23 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
         attendance = [
             (
                 str(member.get("id", "")),
-                ft.Checkbox(label=member_name(member), value=False),
+                ft.Checkbox(
+                    label=member_name(member),
+                    value=bool(record and member.get("id") in record.get("attendee_ids", [])),
+                ),
             )
             for member in ordered_members
         ]
         error_text = ft.Text(color=ft.Colors.RED_700, visible=False)
+
+        def instructor_selected(_: ft.ControlEvent) -> None:
+            for member_id, checkbox in attendance:
+                if member_id == instructor.value:
+                    checkbox.value = True
+                    checkbox.update()
+                    break
+
+        instructor.on_select = instructor_selected
 
         async def choose_file(_: ft.ControlEvent) -> None:
             nonlocal selected_path
@@ -173,7 +233,7 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
 
         def submit(_: ft.ControlEvent) -> None:
             try:
-                record = create_session_record(
+                created_record = create_session_record(
                     presentation_date=selected_date,
                     instructor_id=instructor.value or "",
                     attendee_ids=[
@@ -187,7 +247,11 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
                 error_text.visible = True
                 dialog.update()
                 return
-            sessions.append(record)
+            if editing:
+                created_record["id"] = record.get("id", created_record["id"])
+                sessions[sessions.index(record)] = created_record
+            else:
+                sessions.append(created_record)
             save_records("monthly_training", sessions)
             page.pop_dialog()
             render_sessions()
@@ -195,7 +259,7 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
 
         dialog = ft.AlertDialog(
             modal=True,
-            title=ft.Text("Track monthly training"),
+            title=ft.Text("Edit monthly training" if editing else "Track monthly training"),
             content=ft.Container(
                 content=ft.Column(
                     [
@@ -235,7 +299,9 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
             ),
             actions=[
                 ft.TextButton("Cancel", on_click=lambda _: page.pop_dialog()),
-                ft.FilledButton("Submit", icon=ft.Icons.SAVE, on_click=submit),
+                ft.FilledButton(
+                    "Save" if editing else "Submit", icon=ft.Icons.SAVE, on_click=submit
+                ),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
@@ -279,7 +345,7 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
                                 ft.FilledButton(
                                     "Track training",
                                     icon=ft.Icons.ADD,
-                                    on_click=open_training_dialog,
+                                    on_click=lambda _: open_training_dialog(),
                                     disabled=not ordered_members,
                                     tooltip=(
                                         "Add a team member before tracking training"
