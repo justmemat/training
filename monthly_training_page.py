@@ -17,12 +17,12 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
             actions=[
                 ft.FilledButton(
                     "OK",
-                    on_click=lambda _: page.close(success_dialog),
+                    on_click=lambda _: page.pop_dialog(),
                 )
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
-        page.open(success_dialog)
+        page.show_dialog(success_dialog)
 
     return ft.View(
         route="/monthly-training",

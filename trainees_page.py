@@ -105,7 +105,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
             help_text="Select trainee start date",
             on_change=date_selected,
         )
-        start_date.on_click = lambda _: page.open(date_picker)
+        start_date.on_click = lambda _: page.show_dialog(date_picker)
         phase = ft.Dropdown(
             label="Training Phase",
             value=profile.get("training_phase", TRAINING_PHASES[0]),
@@ -215,7 +215,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                 return
             render_details()
             page.update()
-            page.open(ft.SnackBar(ft.Text("Training information saved.")))
+            page.show_dialog(ft.SnackBar(ft.Text("Training information saved.")))
 
         def build_training_directory(_: ft.ControlEvent) -> None:
             if not update_training_profile():
@@ -305,7 +305,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                     try:
                         open_report_file(history_entry)
                     except (FileNotFoundError, OSError, ValueError) as error:
-                        page.open(ft.SnackBar(ft.Text(str(error))))
+                        page.show_dialog(ft.SnackBar(ft.Text(str(error))))
 
                 history_list.controls.append(
                     ft.Container(
@@ -453,11 +453,11 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                     width=580,
                 ),
                 actions=[
-                    ft.TextButton("Close", on_click=lambda _: page.close(dialog)),
+                    ft.TextButton("Close", on_click=lambda _: page.pop_dialog()),
                     generate_button,
                 ],
             )
-            page.open(dialog)
+            page.show_dialog(dialog)
 
         daily_report_button = ft.OutlinedButton(
             "Add daily training report",
@@ -716,7 +716,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
     def add_trainee_dialog() -> None:
         available = [member for member in members if not member.get("is_trainee")]
         if not available:
-            page.open(
+            page.show_dialog(
                 ft.SnackBar(ft.Text("All team members are already assigned as trainees."))
             )
             return
@@ -745,7 +745,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
             member["is_trainee"] = True
             ensure_profile(profiles, member["id"])
             save_all()
-            page.close(dialog)
+            page.pop_dialog()
             refresh_selector(member["id"])
             page.update()
 
@@ -754,11 +754,11 @@ def build_trainees_view(page: ft.Page) -> ft.View:
             title=ft.Text("Add trainee"),
             content=ft.Column([selection, error], tight=True),
             actions=[
-                ft.TextButton("Cancel", on_click=lambda _: page.close(dialog)),
+                ft.TextButton("Cancel", on_click=lambda _: page.pop_dialog()),
                 ft.FilledButton("Add", icon=ft.Icons.PERSON_ADD, on_click=add_trainee),
             ],
         )
-        page.open(dialog)
+        page.show_dialog(dialog)
 
     trainee_selector.on_select = lambda _: (render_details(), page.update())
     refresh_selector()

@@ -51,6 +51,24 @@ class FletCompatibilityTests(unittest.TestCase):
                     parents[call], ast.Await, f"Unawaited push_route in {filename}"
                 )
 
+    def test_dialogs_use_supported_page_api(self) -> None:
+        for filename in UI_FILES:
+            tree = ast.parse(Path(filename).read_text(encoding="utf-8"), filename)
+            unsupported_calls = [
+                node.func.attr
+                for node in ast.walk(tree)
+                if isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id == "page"
+                and node.func.attr in {"open", "close"}
+            ]
+            self.assertEqual(
+                unsupported_calls,
+                [],
+                f"Unsupported dialog API used in {filename}",
+            )
+
     def test_all_views_build_with_flet_0863(self) -> None:
         page = Mock(spec=ft.Page)
         with (
@@ -67,7 +85,7 @@ class FletCompatibilityTests(unittest.TestCase):
         self.assertTrue(all(isinstance(view, ft.View) for view in views))
 
     def test_monthly_training_button_opens_success_dialog(self) -> None:
-        page = Mock()
+        page = Mock(spec=ft.Page)
         view = build_monthly_training_view(page)
 
         self.assertEqual(len(view.controls), 1)
@@ -77,8 +95,8 @@ class FletCompatibilityTests(unittest.TestCase):
 
         submit_button.on_click(Mock(spec=ft.ControlEvent))
 
-        page.open.assert_called_once()
-        dialog = page.open.call_args.args[0]
+        page.show_dialog.assert_called_once()
+        dialog = page.show_dialog.call_args.args[0]
         self.assertIsInstance(dialog, ft.AlertDialog)
         self.assertEqual(dialog.title.value, "Success")
         self.assertEqual(dialog.content.value, "The change was successful.")
