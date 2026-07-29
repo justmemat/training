@@ -150,7 +150,6 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
             border=ft.Border.all(1, ft.Colors.OUTLINE_VARIANT),
             border_radius=12,
             padding=16,
-            tooltip=str(record.get("presentation_path", "")),
         )
         return ft.ContextMenu(
             content=card,
@@ -166,7 +165,6 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
                     on_click=confirm_delete,
                 ),
             ],
-            tooltip="Right-click to edit or delete",
         )
 
     def render_sessions() -> None:

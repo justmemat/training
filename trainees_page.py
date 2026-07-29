@@ -442,7 +442,6 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                                 on_click=confirm_delete,
                             ),
                         ],
-                        tooltip="Right-click to edit or delete",
                     )
                 )
 
@@ -879,7 +878,6 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                         on_click=begin_edit,
                     )
                 ],
-                tooltip="Right-click to edit training information",
             )
         ]
 

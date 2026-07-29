@@ -35,7 +35,7 @@ def build_team_members_view(page: ft.Page) -> ft.View:
         operating_initials = ft.TextField(
             label="Operating initials",
             value=member.get("operating_initials", "") if member else "",
-            max_length=6,
+            max_length=2,
             capitalization=ft.TextCapitalization.CHARACTERS,
         )
         email = ft.TextField(
@@ -222,7 +222,6 @@ def build_team_members_view(page: ft.Page) -> ft.View:
                     on_click=lambda _, selected=member: confirm_delete(selected),
                 ),
             ],
-            tooltip="Right-click to edit or delete",
         )
 
     def render_members() -> None:
@@ -257,10 +256,6 @@ def build_team_members_view(page: ft.Page) -> ft.View:
                                             size=30,
                                             weight=ft.FontWeight.BOLD,
                                             color=ft.Colors.PRIMARY,
-                                        ),
-                                        ft.Text(
-                                            "Manage team members and role assignments.",
-                                            color=ft.Colors.ON_SURFACE_VARIANT,
                                         ),
                                     ],
                                     spacing=2,

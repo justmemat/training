@@ -92,11 +92,13 @@ class FletCompatibilityTests(unittest.TestCase):
 
         self.assertEqual(
             view.appbar.title.value,
-            "Assessment, Training, Logging, and Analytics System",
+            "ATLAS",
         )
-        self.assertEqual(view.controls[0].controls[0].value, "ATLAS")
+        self.assertEqual(
+            view.controls[0].controls[0].value, "Choose an area to get started"
+        )
 
-        first_button = view.controls[0].controls[3].controls[0].content.controls[3]
+        first_button = view.controls[0].controls[2].controls[0].content.controls[3]
         with patch("landing_page.asyncio.sleep", new=AsyncMock()) as sleep:
             asyncio.run(first_button.on_click(Mock(spec=ft.ControlEvent)))
 
@@ -243,7 +245,7 @@ class FletCompatibilityTests(unittest.TestCase):
         self.assertEqual(
             [item.content for item in context_menu.secondary_items], ["Edit", "Delete"]
         )
-        self.assertEqual(context_menu.tooltip, "Right-click to edit or delete")
+        self.assertIsNone(context_menu.tooltip)
         self.assertEqual(len(context_menu.content.content.controls), 3)
 
         context_menu.secondary_items[0].on_click(Mock(spec=ft.ControlEvent))
@@ -281,9 +283,7 @@ class FletCompatibilityTests(unittest.TestCase):
             [item.content for item in context_menu.secondary_items],
             ["Edit training information"],
         )
-        self.assertEqual(
-            context_menu.tooltip, "Right-click to edit training information"
-        )
+        self.assertIsNone(context_menu.tooltip)
         details.update = Mock()
         context_menu.secondary_items[0].on_click(Mock(spec=ft.ControlEvent))
         content_column = context_menu.content.content
