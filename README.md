@@ -49,12 +49,21 @@ Place the application icon at `assets/icon.ico`, then run the pack command from
 the directory containing `main.py`:
 
 ```bat
-flet pack main.py -i assets/icon.ico -n ATLAS --add-data "assets; assets" --file-version 1.2.1
+flet pack main.py -i assets/icon.ico -n ATLAS --add-data "assets;assets" --file-version 1.2.1
 ```
 
-The application resolves the assets directory both beside the Python sources
-and inside PyInstaller's temporary bundle directory, so the packaged icon and
-other bundled assets remain available at runtime.
+Do not put a space after the semicolon in `--add-data`. PyInstaller treats the
+text after the semicolon as the destination directory, so `"assets; assets"`
+creates a directory whose name begins with a space. The executable icon set by
+`-i` will still look correct in Explorer, but the running Flet window will not
+find `assets/icon.ico` and will fall back to the standard Flet icon in its title
+bar and taskbar entry.
+
+The application resolves the correctly named `assets` directory both beside
+the Python sources and inside PyInstaller's temporary bundle directory, so the
+packaged icon and other bundled assets remain available at runtime. Remove the
+old `build` and `dist` directories before repacking if a previous build still
+shows the cached icon.
 
 You can confirm the active version with:
 
