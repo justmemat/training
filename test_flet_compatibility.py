@@ -90,15 +90,13 @@ class FletCompatibilityTests(unittest.TestCase):
         page.push_route = AsyncMock()
         view = build_landing_view(page)
 
+        self.assertIsNone(view.appbar)
+        self.assertEqual(view.controls[0].controls[0].value, "ATLAS")
         self.assertEqual(
-            view.appbar.title.value,
-            "ATLAS",
-        )
-        self.assertEqual(
-            view.controls[0].controls[0].value, "Choose an area to get started"
+            view.controls[0].controls[1].value, "Choose an area to get started"
         )
 
-        first_button = view.controls[0].controls[2].controls[0].content.controls[3]
+        first_button = view.controls[0].controls[3].controls[0].content.controls[3]
         with patch("landing_page.asyncio.sleep", new=AsyncMock()) as sleep:
             asyncio.run(first_button.on_click(Mock(spec=ft.ControlEvent)))
 
@@ -307,6 +305,9 @@ class FletStartupTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(len(page.views), 1)
         self.assertEqual(page.views[0].route, "/")
+        self.assertEqual(
+            page.title, "Assessment, Training, Logging, and Analytics System"
+        )
         page.window.center.assert_awaited_once_with()
         page.update.assert_called_once_with()
         self.assertTrue(callable(page.on_route_change))

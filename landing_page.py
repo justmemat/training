@@ -67,13 +67,15 @@ def build_landing_view(page: ft.Page) -> ft.View:
         route="/",
         bgcolor=ft.Colors.SURFACE,
         padding=40,
-        appbar=ft.AppBar(
-            title=ft.Text("ATLAS"),
-            center_title=True,
-        ),
         controls=[
             ft.Column(
                 controls=[
+                    ft.Text(
+                        "ATLAS",
+                        size=38,
+                        weight=ft.FontWeight.BOLD,
+                        color=ft.Colors.PRIMARY,
+                    ),
                     ft.Text(
                         "Choose an area to get started",
                         size=18,

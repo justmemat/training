@@ -19,7 +19,8 @@ ASSETS_DIR = APP_DIR / "assets"
 
 async def main(page: ft.Page) -> None:
     """Configure the window and display the view for the current route."""
-    page.title = "ATLAS"
+    # Display the expanded acronym in the native window title bar.
+    page.title = "Assessment, Training, Logging, and Analytics System"
     # Follow the operating-system preference while keeping both variants in the
     # familiar Microsoft Teams purple palette.
     page.theme_mode = ft.ThemeMode.SYSTEM
