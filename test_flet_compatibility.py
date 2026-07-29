@@ -90,11 +90,11 @@ class FletCompatibilityTests(unittest.TestCase):
         page.push_route = AsyncMock()
         view = build_landing_view(page)
 
-        self.assertEqual(
-            view.appbar.title.value,
-            "Assessment, Training, Logging, and Analytics System",
-        )
+        self.assertIsNone(view.appbar)
         self.assertEqual(view.controls[0].controls[0].value, "ATLAS")
+        self.assertEqual(
+            view.controls[0].controls[1].value, "Choose an area to get started"
+        )
 
         first_button = view.controls[0].controls[3].controls[0].content.controls[3]
         with patch("landing_page.asyncio.sleep", new=AsyncMock()) as sleep:
@@ -103,9 +103,7 @@ class FletCompatibilityTests(unittest.TestCase):
         page.show_dialog.assert_called_once()
         dialog = page.show_dialog.call_args.args[0]
         self.assertIsInstance(dialog.content.controls[0], ft.ProgressRing)
-        self.assertEqual(
-            dialog.content.controls[1].value, "Connecting to the shared network…"
-        )
+        self.assertEqual(dialog.content.controls[1].value, "Connecting to Network")
         sleep.assert_awaited_once_with(0.1)
         page.push_route.assert_awaited_once_with("/team-members")
         page.pop_dialog.assert_called_once_with()
@@ -245,7 +243,7 @@ class FletCompatibilityTests(unittest.TestCase):
         self.assertEqual(
             [item.content for item in context_menu.secondary_items], ["Edit", "Delete"]
         )
-        self.assertEqual(context_menu.tooltip, "Right-click to edit or delete")
+        self.assertIsNone(context_menu.tooltip)
         self.assertEqual(len(context_menu.content.content.controls), 3)
 
         context_menu.secondary_items[0].on_click(Mock(spec=ft.ControlEvent))
@@ -256,6 +254,39 @@ class FletCompatibilityTests(unittest.TestCase):
         context_menu.secondary_items[1].on_click(Mock(spec=ft.ControlEvent))
         delete_dialog = page.show_dialog.call_args.args[0]
         self.assertEqual(delete_dialog.title.value, "Remove team member?")
+
+    def test_trainee_information_uses_edit_only_context_menu(self) -> None:
+        page = Mock(spec=ft.Page)
+        member = {
+            "id": "trainee-1",
+            "first_name": "Alex",
+            "last_name": "Morgan",
+            "operating_initials": "AM",
+            "is_trainee": True,
+        }
+        with (
+            patch("trainees_page.load_records", side_effect=[[member], [], []]),
+            patch("trainees_page.trainee_directory_exists", return_value=False),
+        ):
+            view = build_trainees_view(page)
+
+        selector = view.controls[0].content.controls[1]
+        selector.value = "trainee-1"
+        selector.on_select(Mock(spec=ft.ControlEvent))
+        details = view.controls[0].content.controls[2]
+        context_menu = details.controls[0]
+
+        self.assertIsInstance(context_menu, ft.ContextMenu)
+        self.assertEqual(
+            [item.content for item in context_menu.secondary_items],
+            ["Edit training information"],
+        )
+        self.assertIsNone(context_menu.tooltip)
+        details.update = Mock()
+        context_menu.secondary_items[0].on_click(Mock(spec=ft.ControlEvent))
+        content_column = context_menu.content.content
+        self.assertFalse(content_column.controls[2].visible)
+        self.assertTrue(content_column.controls[3].visible)
 
 
 class FletStartupTests(unittest.IsolatedAsyncioTestCase):
@@ -274,6 +305,9 @@ class FletStartupTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(len(page.views), 1)
         self.assertEqual(page.views[0].route, "/")
+        self.assertEqual(
+            page.title, "Assessment, Training, Logging, and Analytics System"
+        )
         page.window.center.assert_awaited_once_with()
         page.update.assert_called_once_with()
         self.assertTrue(callable(page.on_route_change))

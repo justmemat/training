@@ -30,7 +30,7 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
     session_list = ft.Column(spacing=10)
     empty_message = ft.Text(
         "No monthly training has been tracked yet.",
-        color=ft.Colors.GREY_600,
+        color=ft.Colors.ON_SURFACE_VARIANT,
         italic=True,
         text_align=ft.TextAlign.CENTER,
     )
@@ -59,11 +59,19 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
             )
             attendees.append(initials or "Unknown")
 
-        def open_presentation(_: ft.ControlEvent) -> None:
+        async def open_presentation(_: ft.ControlEvent) -> None:
+            progress_ui = FileProgressDialog(
+                page, "Opening monthly training", ["Open training presentation"]
+            )
+            progress_ui.show()
             try:
-                open_presentation_file(record)
+                await progress_ui.set_step(0)
+                await asyncio.to_thread(open_presentation_file, record)
+                await progress_ui.set_step(0, complete=True)
             except (FileNotFoundError, OSError) as error:
-                page.show_dialog(ft.SnackBar(ft.Text(str(error))))
+                progress_ui.show_error(error)
+                return
+            progress_ui.close()
 
         def confirm_delete(_: ft.ControlEvent) -> None:
             async def delete_record(_: ft.ControlEvent) -> None:
@@ -107,11 +115,11 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
                     ft.Container(
                         content=ft.IconButton(
                             icon=ft.Icons.SLIDESHOW,
-                            icon_color=ft.Colors.INDIGO_700,
+                            icon_color=ft.Colors.PRIMARY,
                             tooltip=f"Open {record.get('file_name', 'training presentation')}",
                             on_click=open_presentation,
                         ),
-                        bgcolor=ft.Colors.INDIGO_50,
+                        bgcolor=ft.Colors.PRIMARY_CONTAINER,
                         border_radius=10,
                         padding=12,
                     ),
@@ -125,12 +133,12 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
                             ft.Text(
                                 f"{displayed_date}  •  Instructor: "
                                 f"{member_name(members_by_id.get(str(record.get('instructor_id', ''))))}",
-                                color=ft.Colors.GREY_700,
+                                color=ft.Colors.ON_SURFACE_VARIANT,
                             ),
                             ft.Text(
                                 "Attendees: "
                                 + (", ".join(attendees) or "None recorded"),
-                                color=ft.Colors.GREY_700,
+                                color=ft.Colors.ON_SURFACE_VARIANT,
                             ),
                         ],
                         spacing=4,
@@ -138,11 +146,10 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
                     ),
                 ]
             ),
-            bgcolor=ft.Colors.WHITE,
-            border=ft.Border.all(1, ft.Colors.INDIGO_100),
+            bgcolor=ft.Colors.SURFACE_CONTAINER_LOW,
+            border=ft.Border.all(1, ft.Colors.OUTLINE_VARIANT),
             border_radius=12,
             padding=16,
-            tooltip=str(record.get("presentation_path", "")),
         )
         return ft.ContextMenu(
             content=card,
@@ -158,7 +165,6 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
                     on_click=confirm_delete,
                 ),
             ],
-            tooltip="Right-click to edit or delete",
         )
 
     def render_sessions() -> None:
@@ -320,7 +326,7 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
                                 spacing=2,
                                 scroll=ft.ScrollMode.AUTO,
                             ),
-                            border=ft.Border.all(1, ft.Colors.GREY_300),
+                            border=ft.Border.all(1, ft.Colors.OUTLINE_VARIANT),
                             border_radius=8,
                             padding=8,
                             height=180,
@@ -369,7 +375,7 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
     render_sessions()
     return ft.View(
         route="/monthly-training",
-        bgcolor=ft.Colors.INDIGO_50,
+        bgcolor=ft.Colors.SURFACE,
         appbar=ft.AppBar(
             leading=ft.IconButton(
                 icon=ft.Icons.ARROW_BACK,
@@ -377,7 +383,7 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
                 on_click=navigate_home,
             ),
             title=ft.Text("Monthly Training"),
-            bgcolor=ft.Colors.WHITE,
+            bgcolor=ft.Colors.SURFACE_CONTAINER_LOW,
         ),
         controls=[
             ft.Container(
@@ -391,11 +397,11 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
                                             "Monthly Training",
                                             size=30,
                                             weight=ft.FontWeight.BOLD,
-                                            color=ft.Colors.INDIGO_900,
+                                            color=ft.Colors.PRIMARY,
                                         ),
                                         ft.Text(
                                             "Track presentations and team attendance.",
-                                            color=ft.Colors.GREY_700,
+                                            color=ft.Colors.ON_SURFACE_VARIANT,
                                         ),
                                     ],
                                     spacing=2,
@@ -424,7 +430,7 @@ def build_monthly_training_view(page: ft.Page) -> ft.View:
                                 ),
                             ]
                         ),
-                        ft.Divider(height=24, color=ft.Colors.INDIGO_100),
+                        ft.Divider(height=24, color=ft.Colors.OUTLINE_VARIANT),
                         empty_message,
                         session_list,
                     ],

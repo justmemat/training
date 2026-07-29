@@ -12,19 +12,19 @@ class FileProgressDialog:
         self.page = page
         self.steps = steps
         self.step_texts = [
-            ft.Text(f"○ {label}", color=ft.Colors.GREY_600) for label in steps
+            ft.Text(f"○ {label}", color=ft.Colors.ON_SURFACE_VARIANT) for label in steps
         ]
         self.progress = ft.ProgressBar(
             value=0,
             height=12,
-            color=ft.Colors.INDIGO_600,
-            bgcolor=ft.Colors.INDIGO_100,
+            color=ft.Colors.PRIMARY,
+            bgcolor=ft.Colors.PRIMARY_CONTAINER,
             border_radius=6,
         )
         self.message = ft.Text(
             "Preparing...",
             weight=ft.FontWeight.BOLD,
-            color=ft.Colors.INDIGO_700,
+            color=ft.Colors.PRIMARY,
         )
         self.dialog = ft.AlertDialog(
             modal=True,
@@ -59,7 +59,7 @@ class FileProgressDialog:
                 control.weight = ft.FontWeight.W_600
             elif step_index == index:
                 control.value = f"● {label}"
-                control.color = ft.Colors.INDIGO_700
+                control.color = ft.Colors.PRIMARY
                 control.weight = ft.FontWeight.W_600
         self.progress.value = (index + (1 if complete else 0)) / len(self.steps)
         self.message.value = (

@@ -149,6 +149,16 @@ class TeamMemberServiceTests(unittest.TestCase):
                 is_manager=False,
                 is_training_lead=False,
             )
+        with self.assertRaisesRegex(ValueError, "2 characters or fewer"):
+            upsert_member(
+                members,
+                first_name="Taylor",
+                last_name="Three",
+                operating_initials="TTH",
+                email="",
+                is_manager=False,
+                is_training_lead=False,
+            )
 
     def test_optional_email_is_validated(self) -> None:
         with self.assertRaisesRegex(ValueError, "valid email"):

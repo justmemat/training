@@ -19,9 +19,21 @@ ASSETS_DIR = APP_DIR / "assets"
 
 async def main(page: ft.Page) -> None:
     """Configure the window and display the view for the current route."""
-    page.title = "ATLAS"
-    page.theme_mode = ft.ThemeMode.LIGHT
-    page.theme = ft.Theme(color_scheme_seed=ft.Colors.INDIGO)
+    # Display the expanded acronym in the native window title bar.
+    page.title = "Assessment, Training, Logging, and Analytics System"
+    # Follow the operating-system preference while keeping both variants in the
+    # familiar Microsoft Teams purple palette.
+    page.theme_mode = ft.ThemeMode.SYSTEM
+    page.theme = ft.Theme(color_scheme_seed="#6264A7")
+    page.dark_theme = ft.Theme(
+        color_scheme_seed="#7F85F5",
+        color_scheme=ft.ColorScheme(
+            primary="#A6A7FF",
+            secondary="#C4C2FF",
+            surface="#1F1F1F",
+            surface_container="#292929",
+        ),
+    )
     page.padding = 0
     page.window.min_width = 700
     page.window.min_height = 520
@@ -57,7 +69,7 @@ async def main(page: ft.Page) -> None:
             page.views.append(
                 ft.View(
                     route=route,
-                    bgcolor=ft.Colors.INDIGO_50,
+                    bgcolor=ft.Colors.SURFACE,
                     appbar=ft.AppBar(
                         leading=ft.IconButton(
                             icon=ft.Icons.ARROW_BACK,

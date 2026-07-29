@@ -4,7 +4,6 @@ import re
 from typing import Any
 from uuid import uuid4
 
-
 EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
 
@@ -28,8 +27,8 @@ def validate_member(
     )
     if not all(normalized[:3]):
         raise ValueError("First name, last name, and operating initials are required.")
-    if len(normalized[2]) > 6:
-        raise ValueError("Operating initials must be 6 characters or fewer.")
+    if len(normalized[2]) > 2:
+        raise ValueError("Operating initials must be 2 characters or fewer.")
     if normalized[3] and not EMAIL_PATTERN.fullmatch(normalized[3]):
         raise ValueError("Enter a valid email address.")
     return normalized
