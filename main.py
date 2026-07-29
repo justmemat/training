@@ -6,7 +6,7 @@ from pathlib import Path
 import flet as ft
 
 from data_store import initialize_data_files
-from landing_page import build_landing_view
+from landing_page import APP_VERSION, build_landing_view
 from monthly_training_page import build_monthly_training_view
 from team_members_page import build_team_members_view
 from trainees_page import build_trainees_view
@@ -20,7 +20,9 @@ ASSETS_DIR = APP_DIR / "assets"
 async def main(page: ft.Page) -> None:
     """Configure the window and display the view for the current route."""
     # Display the expanded acronym in the native window title bar.
-    page.title = "Assessment, Training, Logging, and Analytics System"
+    page.title = (
+        f"Assessment, Training, Logging, and Analytics System - v{APP_VERSION}"
+    )
     # Follow the operating-system preference while keeping both variants in the
     # familiar Microsoft Teams purple palette.
     page.theme_mode = ft.ThemeMode.SYSTEM

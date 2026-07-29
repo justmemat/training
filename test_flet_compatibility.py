@@ -11,7 +11,12 @@ from unittest.mock import AsyncMock, Mock, patch
 import flet as ft
 
 import main as application
-from landing_page import build_landing_view
+from landing_page import (
+    APP_VERSION,
+    build_landing_view,
+    launch_installer,
+    update_is_available,
+)
 from monthly_training_page import build_monthly_training_view
 from team_members_page import build_team_members_view
 from trainees_page import build_trainees_view
@@ -88,15 +93,19 @@ class FletCompatibilityTests(unittest.TestCase):
     def test_landing_brand_and_navigation_loading_dialog(self) -> None:
         page = Mock(spec=ft.Page)
         page.push_route = AsyncMock()
-        view = build_landing_view(page)
+        with patch("landing_page.update_is_available", return_value=False):
+            view = build_landing_view(page)
+
+        navigation = view.controls[0].content
 
         self.assertIsNone(view.appbar)
-        self.assertEqual(view.controls[0].controls[0].value, "ATLAS")
+        self.assertEqual(navigation.controls[0].value, "ATLAS")
         self.assertEqual(
-            view.controls[0].controls[1].value, "Choose an area to get started"
+            navigation.controls[1].value, "Choose an area to get started"
         )
+        self.assertEqual(len(navigation.controls), 4)
 
-        first_button = view.controls[0].controls[3].controls[0].content.controls[3]
+        first_button = navigation.controls[3].controls[0].content.controls[3]
         with patch("landing_page.asyncio.sleep", new=AsyncMock()) as sleep:
             asyncio.run(first_button.on_click(Mock(spec=ft.ControlEvent)))
 
@@ -107,6 +116,41 @@ class FletCompatibilityTests(unittest.TestCase):
         sleep.assert_awaited_once_with(0.1)
         page.push_route.assert_awaited_once_with("/team-members")
         page.pop_dialog.assert_called_once_with()
+
+    def test_landing_offers_update_when_published_version_differs(self) -> None:
+        page = Mock(spec=ft.Page)
+        with patch("landing_page.update_is_available", return_value=True):
+            view = build_landing_view(page)
+
+        navigation = view.controls[0].content
+        update_button = navigation.controls[4]
+        self.assertEqual(update_button.content, "Update Available")
+        self.assertEqual(navigation.horizontal_alignment, ft.CrossAxisAlignment.CENTER)
+
+        with patch("landing_page.launch_installer") as installer:
+            update_button.on_click(Mock(spec=ft.ControlEvent))
+        installer.assert_called_once_with()
+
+    def test_version_check_handles_matching_different_and_missing_files(self) -> None:
+        with self.subTest("matching"):
+            version_file = Mock(spec=Path)
+            version_file.read_text.return_value = "1.2.1\n"
+            self.assertFalse(update_is_available(version_file))
+
+        with self.subTest("different"):
+            version_file.read_text.return_value = "1.2.2"
+            self.assertTrue(update_is_available(version_file))
+
+        with self.subTest("inaccessible"):
+            version_file.read_text.side_effect = OSError
+            self.assertTrue(update_is_available(version_file))
+
+    @patch("landing_page.subprocess.Popen")
+    def test_installer_is_launched_through_windows_command_shell(self, popen: Mock) -> None:
+        installer = Path(r"T:\BAE\Training\App\install.bat")
+        launch_installer(installer)
+        command = popen.call_args.args[0]
+        self.assertEqual(command, ["cmd.exe", "/c", "start", "", str(installer)])
 
     def test_monthly_training_button_opens_entry_dialog(self) -> None:
         page = Mock(spec=ft.Page)
@@ -306,7 +350,8 @@ class FletStartupTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(page.views), 1)
         self.assertEqual(page.views[0].route, "/")
         self.assertEqual(
-            page.title, "Assessment, Training, Logging, and Analytics System"
+            page.title,
+            f"Assessment, Training, Logging, and Analytics System - v{APP_VERSION}",
         )
         page.window.center.assert_awaited_once_with()
         page.update.assert_called_once_with()
