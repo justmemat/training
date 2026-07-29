@@ -163,17 +163,17 @@ def build_landing_view(page: ft.Page) -> ft.View:
         bgcolor=ft.Colors.SURFACE,
         padding=40,
         controls=[
-            ft.Container(
-                content=navigation,
-                alignment=ft.Alignment.CENTER,
-                expand=True,
-            ),
             ft.Row(
                 controls=version_controls,
                 alignment=ft.MainAxisAlignment.END,
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 spacing=12,
-            )
+            ),
+            ft.Container(
+                content=navigation,
+                alignment=ft.Alignment.CENTER,
+                expand=True,
+            ),
         ],
         horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
         vertical_alignment=ft.MainAxisAlignment.START,

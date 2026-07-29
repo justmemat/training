@@ -96,14 +96,16 @@ class FletCompatibilityTests(unittest.TestCase):
         with patch("landing_page.update_is_available", return_value=False):
             view = build_landing_view(page)
 
-        navigation = view.controls[0].content
+        version_row, navigation_container = view.controls
+        navigation = navigation_container.content
 
         self.assertIsNone(view.appbar)
+        self.assertEqual(version_row.alignment, ft.MainAxisAlignment.END)
         self.assertEqual(navigation.controls[0].value, "ATLAS")
         self.assertEqual(
             navigation.controls[1].value, "Choose an area to get started"
         )
-        self.assertEqual(view.controls[1].controls[0].value, f"Version {APP_VERSION}")
+        self.assertEqual(version_row.controls[0].value, f"Version {APP_VERSION}")
 
         first_button = navigation.controls[3].controls[0].content.controls[3]
         with patch("landing_page.asyncio.sleep", new=AsyncMock()) as sleep:
@@ -122,7 +124,7 @@ class FletCompatibilityTests(unittest.TestCase):
         with patch("landing_page.update_is_available", return_value=True):
             view = build_landing_view(page)
 
-        update_button, version = view.controls[1].controls
+        update_button, version = view.controls[0].controls
         self.assertEqual(update_button.content, "Update Available")
         self.assertEqual(version.value, "Version 1.2.1")
 
