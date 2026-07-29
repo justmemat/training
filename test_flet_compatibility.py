@@ -96,16 +96,14 @@ class FletCompatibilityTests(unittest.TestCase):
         with patch("landing_page.update_is_available", return_value=False):
             view = build_landing_view(page)
 
-        version_row, navigation_container = view.controls
-        navigation = navigation_container.content
+        navigation = view.controls[0].content
 
         self.assertIsNone(view.appbar)
-        self.assertEqual(version_row.alignment, ft.MainAxisAlignment.END)
         self.assertEqual(navigation.controls[0].value, "ATLAS")
         self.assertEqual(
             navigation.controls[1].value, "Choose an area to get started"
         )
-        self.assertEqual(version_row.controls[0].value, f"Version {APP_VERSION}")
+        self.assertEqual(len(navigation.controls), 4)
 
         first_button = navigation.controls[3].controls[0].content.controls[3]
         with patch("landing_page.asyncio.sleep", new=AsyncMock()) as sleep:
@@ -124,9 +122,10 @@ class FletCompatibilityTests(unittest.TestCase):
         with patch("landing_page.update_is_available", return_value=True):
             view = build_landing_view(page)
 
-        update_button, version = view.controls[0].controls
+        navigation = view.controls[0].content
+        update_button = navigation.controls[4]
         self.assertEqual(update_button.content, "Update Available")
-        self.assertEqual(version.value, "Version 1.2.1")
+        self.assertEqual(navigation.horizontal_alignment, ft.CrossAxisAlignment.CENTER)
 
         with patch("landing_page.launch_installer") as installer:
             update_button.on_click(Mock(spec=ft.ControlEvent))
@@ -351,7 +350,8 @@ class FletStartupTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(page.views), 1)
         self.assertEqual(page.views[0].route, "/")
         self.assertEqual(
-            page.title, "Assessment, Training, Logging, and Analytics System"
+            page.title,
+            f"Assessment, Training, Logging, and Analytics System - v{APP_VERSION}",
         )
         page.window.center.assert_awaited_once_with()
         page.update.assert_called_once_with()

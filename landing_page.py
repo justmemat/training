@@ -94,22 +94,15 @@ def build_landing_view(page: ft.Page) -> ft.View:
     def install_update(_: ft.ControlEvent) -> None:
         launch_installer()
 
-    version_controls: list[ft.Control] = []
+    update_controls: list[ft.Control] = []
     if update_is_available():
-        version_controls.append(
+        update_controls.append(
             ft.FilledButton(
                 "Update Available",
                 icon=ft.Icons.SYSTEM_UPDATE_ALT,
                 on_click=install_update,
             )
         )
-    version_controls.append(
-        ft.Text(
-            f"Version {APP_VERSION}",
-            size=12,
-            color=ft.Colors.ON_SURFACE_VARIANT,
-        )
-    )
 
     navigation = ft.Column(
         controls=[
@@ -153,6 +146,7 @@ def build_landing_view(page: ft.Page) -> ft.View:
                 spacing=24,
                 wrap=True,
             ),
+            *update_controls,
         ],
         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
         spacing=8,
@@ -163,12 +157,6 @@ def build_landing_view(page: ft.Page) -> ft.View:
         bgcolor=ft.Colors.SURFACE,
         padding=40,
         controls=[
-            ft.Row(
-                controls=version_controls,
-                alignment=ft.MainAxisAlignment.END,
-                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                spacing=12,
-            ),
             ft.Container(
                 content=navigation,
                 alignment=ft.Alignment.CENTER,
