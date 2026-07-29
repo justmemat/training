@@ -49,7 +49,7 @@ Place the application icon at `assets/icon.ico`, then run the pack command from
 the directory containing `main.py`:
 
 ```bat
-flet pack main.py -i assets/icon.ico -n ATLAS --add-data "assets; assets" --file-version 1.1.1
+flet pack main.py -i assets/icon.ico -n ATLAS --add-data "assets; assets" --file-version 1.2.1
 ```
 
 The application resolves the assets directory both beside the Python sources
