@@ -11,7 +11,7 @@ taskkill /IM flet.exe /F >nul 2>&1
 timeout /t 2 /nobreak >nul
 
 set "TARGET=C:\OSFTOOLS\ATLAS\ATLAS.exe"
-set "SOURCE_DIR=T:\BAE\Training\Assets\App"
+set "SOURCE_DIR=T:\BAE\Training\App\Assets"
 set "SOURCE_FILE=ATLAS.exe"
 set "VERSION_FILE=%SOURCE_DIR%\verchek.txt"
 set "INSTALL_VERSION="
