@@ -72,7 +72,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                             ft.Icon(
                                 ft.Icons.PERSON_SEARCH,
                                 size=58,
-                                color=ft.Colors.INDIGO_300,
+                                color=ft.Colors.PRIMARY,
                             ),
                             ft.Text(
                                 "Select a trainee to view training information.",
@@ -296,7 +296,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
         history_list = ft.Column(spacing=8)
         history_empty = ft.Text(
             "No daily training reports have been recorded.",
-            color=ft.Colors.GREY_600,
+            color=ft.Colors.ON_SURFACE_VARIANT,
             italic=True,
         )
 
@@ -321,13 +321,21 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                     else "Unknown instructor"
                 )
 
-                def open_report(
+                async def open_report(
                     _: ft.ControlEvent, history_entry: dict = entry
                 ) -> None:
+                    progress_ui = FileProgressDialog(
+                        page, "Opening daily training report", ["Open report file"]
+                    )
+                    progress_ui.show()
                     try:
-                        open_report_file(history_entry)
+                        await progress_ui.set_step(0)
+                        await asyncio.to_thread(open_report_file, history_entry)
+                        await progress_ui.set_step(0, complete=True)
                     except (FileNotFoundError, OSError, ValueError) as error:
-                        page.show_dialog(ft.SnackBar(ft.Text(str(error))))
+                        progress_ui.show_error(error)
+                        return
+                    progress_ui.close()
 
                 def confirm_delete(
                     _: ft.ControlEvent, history_entry: dict = entry
@@ -382,7 +390,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                                 [
                                     ft.IconButton(
                                         icon=ft.Icons.DESCRIPTION,
-                                        icon_color=ft.Colors.INDIGO_500,
+                                        icon_color=ft.Colors.PRIMARY,
                                         tooltip=f"Open {entry.get('file_name', 'training report')}",
                                         on_click=open_report,
                                     ),
@@ -396,7 +404,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                                             ),
                                             ft.Text(
                                                 f"Instructor: {instructor_name}",
-                                                color=ft.Colors.GREY_700,
+                                                color=ft.Colors.ON_SURFACE_VARIANT,
                                             ),
                                             ft.Text(
                                                 str(
@@ -408,7 +416,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                                                     ).name
                                                 ),
                                                 size=12,
-                                                color=ft.Colors.GREY_500,
+                                                color=ft.Colors.ON_SURFACE_VARIANT,
                                             ),
                                         ],
                                         spacing=2,
@@ -416,7 +424,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                                     ),
                                 ]
                             ),
-                            bgcolor=ft.Colors.INDIGO_50,
+                            bgcolor=ft.Colors.SURFACE_CONTAINER,
                             border_radius=8,
                             padding=12,
                         ),
@@ -635,7 +643,9 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                     [
                         ft.Column(
                             [
-                                ft.Text("Start date", color=ft.Colors.GREY_600),
+                                ft.Text(
+                                    "Start date", color=ft.Colors.ON_SURFACE_VARIANT
+                                ),
                                 ft.Text(
                                     format_start_date(selected_start_date)
                                     or "Not assigned",
@@ -647,7 +657,9 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                         ),
                         ft.Column(
                             [
-                                ft.Text("Training Phase", color=ft.Colors.GREY_600),
+                                ft.Text(
+                                    "Training Phase", color=ft.Colors.ON_SURFACE_VARIANT
+                                ),
                                 ft.Text(
                                     str(
                                         profile.get(
@@ -668,13 +680,16 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                     "Training Team",
                     size=18,
                     weight=ft.FontWeight.BOLD,
-                    color=ft.Colors.INDIGO_900,
+                    color=ft.Colors.PRIMARY,
                 ),
                 ft.Row(
                     [
                         ft.Column(
                             [
-                                ft.Text("Primary instructor", color=ft.Colors.GREY_600),
+                                ft.Text(
+                                    "Primary instructor",
+                                    color=ft.Colors.ON_SURFACE_VARIANT,
+                                ),
                                 ft.Text(assigned_name(primary_value), size=16),
                             ],
                             width=280,
@@ -682,7 +697,8 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                         ft.Column(
                             [
                                 ft.Text(
-                                    "Secondary instructor", color=ft.Colors.GREY_600
+                                    "Secondary instructor",
+                                    color=ft.Colors.ON_SURFACE_VARIANT,
                                 ),
                                 ft.Text(assigned_name(secondary_value), size=16),
                             ],
@@ -690,7 +706,10 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                         ),
                         ft.Column(
                             [
-                                ft.Text("Assigned manager", color=ft.Colors.GREY_600),
+                                ft.Text(
+                                    "Assigned manager",
+                                    color=ft.Colors.ON_SURFACE_VARIANT,
+                                ),
                                 ft.Text(assigned_name(manager_value), size=16),
                             ],
                             width=280,
@@ -714,7 +733,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                     "Training Team",
                     size=18,
                     weight=ft.FontWeight.BOLD,
-                    color=ft.Colors.INDIGO_900,
+                    color=ft.Colors.PRIMARY,
                 ),
                 ft.Row(
                     [primary_instructor, secondary_instructor, assigned_manager],
@@ -737,12 +756,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
         def begin_edit(_: ft.ControlEvent) -> None:
             plain_information.visible = False
             editing_information.visible = True
-            edit_button.visible = False
             details.update()
-
-        edit_button = ft.FilledTonalButton(
-            "Edit training information", icon=ft.Icons.EDIT, on_click=begin_edit
-        )
 
         async def build_history_report(_: ft.ControlEvent) -> None:
             history_report_button.disabled = True
@@ -793,70 +807,79 @@ def build_trainees_view(page: ft.Page) -> ft.View:
         )
 
         details.controls = [
-            ft.Container(
-                content=ft.Column(
-                    [
-                        ft.Row(
-                            [
-                                ft.CircleAvatar(
-                                    content=ft.Text(
-                                        str(
-                                            member.get("operating_initials", "")
-                                        ).upper(),
-                                        weight=ft.FontWeight.BOLD,
-                                    ),
-                                    radius=30,
-                                    bgcolor=ft.Colors.INDIGO_100,
-                                    color=ft.Colors.INDIGO_900,
-                                ),
-                                ft.Column(
-                                    [
-                                        ft.Text(
-                                            f"{member.get('first_name', '')} "
-                                            f"{member.get('last_name', '')}",
-                                            size=26,
+            ft.ContextMenu(
+                content=ft.Container(
+                    content=ft.Column(
+                        [
+                            ft.Row(
+                                [
+                                    ft.CircleAvatar(
+                                        content=ft.Text(
+                                            str(
+                                                member.get("operating_initials", "")
+                                            ).upper(),
                                             weight=ft.FontWeight.BOLD,
                                         ),
-                                        ft.Text(
-                                            f"Operating initials: "
-                                            f"{member.get('operating_initials', '')}",
-                                            color=ft.Colors.GREY_700,
-                                        ),
-                                    ],
-                                    spacing=2,
-                                ),
-                            ],
-                            spacing=18,
-                        ),
-                        ft.Divider(),
-                        plain_information,
-                        editing_information,
-                        ft.Row(
-                            [
-                                edit_button,
-                                create_directory_button,
-                                daily_report_button,
-                                history_report_button,
-                                message,
-                            ],
-                            wrap=True,
-                        ),
-                        ft.Divider(height=28),
-                        ft.Text(
-                            "Training History",
-                            size=20,
-                            weight=ft.FontWeight.BOLD,
-                            color=ft.Colors.INDIGO_900,
-                        ),
-                        history_empty,
-                        history_list,
-                    ],
-                    spacing=18,
+                                        radius=30,
+                                        bgcolor=ft.Colors.PRIMARY_CONTAINER,
+                                        color=ft.Colors.ON_PRIMARY_CONTAINER,
+                                    ),
+                                    ft.Column(
+                                        [
+                                            ft.Text(
+                                                f"{member.get('first_name', '')} "
+                                                f"{member.get('last_name', '')}",
+                                                size=26,
+                                                weight=ft.FontWeight.BOLD,
+                                            ),
+                                            ft.Text(
+                                                f"Operating initials: "
+                                                f"{member.get('operating_initials', '')}",
+                                                color=ft.Colors.ON_SURFACE_VARIANT,
+                                            ),
+                                        ],
+                                        spacing=2,
+                                    ),
+                                ],
+                                spacing=18,
+                            ),
+                            ft.Divider(),
+                            plain_information,
+                            editing_information,
+                            ft.Row(
+                                [
+                                    create_directory_button,
+                                    daily_report_button,
+                                    history_report_button,
+                                    message,
+                                ],
+                                wrap=True,
+                            ),
+                            ft.Divider(height=28),
+                            ft.Text(
+                                "Training History",
+                                size=20,
+                                weight=ft.FontWeight.BOLD,
+                                color=ft.Colors.PRIMARY,
+                            ),
+                            history_empty,
+                            history_list,
+                        ],
+                        spacing=18,
+                    ),
+                    bgcolor=ft.Colors.SURFACE_CONTAINER_LOW,
+                    border=ft.Border.all(1, ft.Colors.OUTLINE_VARIANT),
+                    border_radius=14,
+                    padding=28,
                 ),
-                bgcolor=ft.Colors.WHITE,
-                border=ft.Border.all(1, ft.Colors.INDIGO_100),
-                border_radius=14,
-                padding=28,
+                secondary_items=[
+                    ft.PopupMenuItem(
+                        content="Edit training information",
+                        icon=ft.Icons.EDIT,
+                        on_click=begin_edit,
+                    )
+                ],
+                tooltip="Right-click to edit training information",
             )
         ]
 
@@ -935,7 +958,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
     refresh_selector()
     return ft.View(
         route="/trainees",
-        bgcolor=ft.Colors.INDIGO_50,
+        bgcolor=ft.Colors.SURFACE,
         appbar=ft.AppBar(
             leading=ft.IconButton(
                 icon=ft.Icons.ARROW_BACK,
@@ -943,7 +966,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                 on_click=navigate_home,
             ),
             title=ft.Text("Trainees"),
-            bgcolor=ft.Colors.WHITE,
+            bgcolor=ft.Colors.SURFACE_CONTAINER_LOW,
         ),
         controls=[
             ft.Container(
@@ -960,7 +983,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                                         ),
                                         ft.Text(
                                             "Select a trainee to review or update their training.",
-                                            color=ft.Colors.GREY_700,
+                                            color=ft.Colors.ON_SURFACE_VARIANT,
                                         ),
                                     ],
                                     expand=True,

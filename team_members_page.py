@@ -19,7 +19,7 @@ def build_team_members_view(page: ft.Page) -> ft.View:
     member_list = ft.Column(spacing=10)
     empty_message = ft.Text(
         "No team members yet. Select Add team member to create the first one.",
-        color=ft.Colors.GREY_600,
+        color=ft.Colors.ON_SURFACE_VARIANT,
         italic=True,
         text_align=ft.TextAlign.CENTER,
     )
@@ -171,7 +171,7 @@ def build_team_members_view(page: ft.Page) -> ft.View:
                 ft.Chip(label=ft.Text("Trainee"), leading=ft.Icon(ft.Icons.SCHOOL))
             )
         if not roles:
-            roles.append(ft.Text("Team member", color=ft.Colors.GREY_600))
+            roles.append(ft.Text("Team member", color=ft.Colors.ON_SURFACE_VARIANT))
 
         card = ft.Container(
             content=ft.Row(
@@ -181,8 +181,8 @@ def build_team_members_view(page: ft.Page) -> ft.View:
                             str(member.get("operating_initials", "")).upper(),
                             weight=ft.FontWeight.BOLD,
                         ),
-                        bgcolor=ft.Colors.INDIGO_100,
-                        color=ft.Colors.INDIGO_900,
+                        bgcolor=ft.Colors.PRIMARY_CONTAINER,
+                        color=ft.Colors.ON_PRIMARY_CONTAINER,
                     ),
                     ft.Column(
                         [
@@ -194,7 +194,7 @@ def build_team_members_view(page: ft.Page) -> ft.View:
                             ),
                             ft.Text(
                                 member.get("email") or "No email address provided",
-                                color=ft.Colors.GREY_700,
+                                color=ft.Colors.ON_SURFACE_VARIANT,
                             ),
                         ],
                         spacing=2,
@@ -203,8 +203,8 @@ def build_team_members_view(page: ft.Page) -> ft.View:
                     ft.Row(roles, spacing=6, wrap=True),
                 ]
             ),
-            bgcolor=ft.Colors.WHITE,
-            border=ft.Border.all(1, ft.Colors.INDIGO_100),
+            bgcolor=ft.Colors.SURFACE_CONTAINER_LOW,
+            border=ft.Border.all(1, ft.Colors.OUTLINE_VARIANT),
             border_radius=12,
             padding=16,
         )
@@ -234,7 +234,7 @@ def build_team_members_view(page: ft.Page) -> ft.View:
     render_members()
     return ft.View(
         route="/team-members",
-        bgcolor=ft.Colors.INDIGO_50,
+        bgcolor=ft.Colors.SURFACE,
         appbar=ft.AppBar(
             leading=ft.IconButton(
                 icon=ft.Icons.ARROW_BACK,
@@ -242,7 +242,7 @@ def build_team_members_view(page: ft.Page) -> ft.View:
                 on_click=navigate_home,
             ),
             title=ft.Text("Team Members"),
-            bgcolor=ft.Colors.WHITE,
+            bgcolor=ft.Colors.SURFACE_CONTAINER_LOW,
         ),
         controls=[
             ft.Container(
@@ -256,11 +256,11 @@ def build_team_members_view(page: ft.Page) -> ft.View:
                                             "Team Members",
                                             size=30,
                                             weight=ft.FontWeight.BOLD,
-                                            color=ft.Colors.INDIGO_900,
+                                            color=ft.Colors.PRIMARY,
                                         ),
                                         ft.Text(
                                             "Manage team members and role assignments.",
-                                            color=ft.Colors.GREY_700,
+                                            color=ft.Colors.ON_SURFACE_VARIANT,
                                         ),
                                     ],
                                     spacing=2,
@@ -273,7 +273,7 @@ def build_team_members_view(page: ft.Page) -> ft.View:
                                 ),
                             ]
                         ),
-                        ft.Divider(height=24, color=ft.Colors.INDIGO_100),
+                        ft.Divider(height=24, color=ft.Colors.OUTLINE_VARIANT),
                         empty_message,
                         member_list,
                     ],

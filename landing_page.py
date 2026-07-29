@@ -14,7 +14,7 @@ def _navigation_card(
             content=ft.Row(
                 controls=[
                     ft.ProgressRing(width=28, height=28),
-                    ft.Text("Connecting to the shared network…", size=16),
+                    ft.Text("Connecting to Network", size=16),
                 ],
                 alignment=ft.MainAxisAlignment.CENTER,
                 spacing=18,
@@ -31,12 +31,12 @@ def _navigation_card(
     return ft.Container(
         content=ft.Column(
             controls=[
-                ft.Icon(icon, size=46, color=ft.Colors.INDIGO_600),
+                ft.Icon(icon, size=46, color=ft.Colors.PRIMARY),
                 ft.Text(title, size=22, weight=ft.FontWeight.BOLD),
                 ft.Text(
                     description,
                     size=14,
-                    color=ft.Colors.GREY_700,
+                    color=ft.Colors.ON_SURFACE_VARIANT,
                     text_align=ft.TextAlign.CENTER,
                 ),
                 ft.FilledButton(
@@ -48,14 +48,14 @@ def _navigation_card(
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             spacing=16,
         ),
-        bgcolor=ft.Colors.WHITE,
-        border=ft.Border.all(1, ft.Colors.INDIGO_100),
+        bgcolor=ft.Colors.SURFACE_CONTAINER_LOW,
+        border=ft.Border.all(1, ft.Colors.OUTLINE_VARIANT),
         border_radius=18,
         padding=28,
         width=270,
         shadow=ft.BoxShadow(
             blur_radius=18,
-            color=ft.Colors.with_opacity(0.10, ft.Colors.BLACK),
+            color=ft.Colors.with_opacity(0.18, ft.Colors.SHADOW),
             offset=ft.Offset(0, 6),
         ),
     )
@@ -65,7 +65,7 @@ def build_landing_view(page: ft.Page) -> ft.View:
     """Build the application's main navigation screen."""
     return ft.View(
         route="/",
-        bgcolor=ft.Colors.INDIGO_50,
+        bgcolor=ft.Colors.SURFACE,
         padding=40,
         appbar=ft.AppBar(
             title=ft.Text("Assessment, Training, Logging, and Analytics System"),
@@ -78,12 +78,12 @@ def build_landing_view(page: ft.Page) -> ft.View:
                         "ATLAS",
                         size=38,
                         weight=ft.FontWeight.BOLD,
-                        color=ft.Colors.INDIGO_900,
+                        color=ft.Colors.PRIMARY,
                     ),
                     ft.Text(
                         "Choose an area to get started",
                         size=18,
-                        color=ft.Colors.GREY_700,
+                        color=ft.Colors.ON_SURFACE_VARIANT,
                     ),
                     ft.Container(height=14),
                     ft.Row(
