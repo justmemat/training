@@ -6,7 +6,7 @@ from pathlib import Path
 
 import flet as ft
 
-APP_VERSION = "1.2.1"
+APP_VERSION = "1.2.2"
 VERSION_FILE = Path(r"T:\BAE\Training\App\Assets\verchek.txt")
 INSTALLER_FILE = Path(r"T:\BAE\Training\App\install.bat")
 
