@@ -15,8 +15,12 @@ from trainee_service import (
     update_profile,
 )
 from training_directory_service import (
+    copy_files_to_uploads,
     create_training_directory,
+    open_directory,
     trainee_directory_exists,
+    training_guide_path,
+    uploads_directory,
 )
 from training_history_service import (
     create_history_record,
@@ -194,6 +198,7 @@ def build_trainees_view(page: ft.Page) -> ft.View:
         )
         message = ft.Text(visible=False)
         directory_already_exists = trainee_directory_exists(member)
+        guide_already_exists = training_guide_path(member).is_file()
 
         def update_training_profile(*, persist: bool = True) -> bool:
             try:
@@ -278,6 +283,9 @@ def build_trainees_view(page: ft.Page) -> ft.View:
             history_report_button.tooltip = (
                 "Create or update the Excel training history report"
             )
+            open_guide_button.disabled = False
+            upload_files_button.disabled = False
+            view_uploads_button.disabled = False
             details.update()
             progress_ui.close()
 
@@ -291,6 +299,98 @@ def build_trainees_view(page: ft.Page) -> ft.View:
                 else "Create the trainee directory and populated training guide"
             ),
             on_click=build_training_directory,
+        )
+
+        async def open_training_guide(_: ft.ControlEvent) -> None:
+            progress_ui = FileProgressDialog(
+                page, "Opening training guide", ["Locate training guide", "Open PDF"]
+            )
+            progress_ui.show()
+            try:
+                await progress_ui.set_step(0)
+                guide_path = training_guide_path(member)
+                if not guide_path.is_file():
+                    raise FileNotFoundError(
+                        f"Training guide was not found: {guide_path}"
+                    )
+                await progress_ui.set_step(1)
+                await asyncio.to_thread(
+                    open_report_file, {"report_path": str(guide_path)}
+                )
+                await progress_ui.set_step(1, complete=True)
+            except (FileNotFoundError, OSError, ValueError) as error:
+                progress_ui.show_error(error)
+                return
+            progress_ui.close()
+
+        open_guide_button = ft.OutlinedButton(
+            "Open training guide",
+            icon=ft.Icons.PICTURE_AS_PDF,
+            disabled=not guide_already_exists,
+            tooltip=(
+                "Open the populated training guide"
+                if guide_already_exists
+                else "Create the trainee's training directory first."
+            ),
+            on_click=open_training_guide,
+        )
+
+        async def upload_files(_: ft.ControlEvent) -> None:
+            selected = await ft.FilePicker().pick_files(
+                dialog_title="Select files to upload", allow_multiple=True
+            )
+            if not selected:
+                return
+            progress_ui = FileProgressDialog(
+                page,
+                "Uploading trainee files",
+                ["Validate selected files", "Copy files to Uploads"],
+            )
+            progress_ui.show()
+            try:
+                await progress_ui.set_step(0)
+                paths = [item.path for item in selected if item.path]
+                if len(paths) != len(selected):
+                    raise ValueError("One or more selected files cannot be accessed.")
+                await progress_ui.set_step(1)
+                copied = await asyncio.to_thread(copy_files_to_uploads, member, paths)
+                await progress_ui.set_step(1, complete=True)
+            except (FileNotFoundError, OSError, ValueError) as error:
+                progress_ui.show_error(error)
+                return
+            message.value = f"Uploaded {len(copied)} file(s) to the Uploads folder."
+            message.color = ft.Colors.GREEN_700
+            message.visible = True
+            details.update()
+            progress_ui.close()
+
+        async def view_uploaded_files(_: ft.ControlEvent) -> None:
+            progress_ui = FileProgressDialog(
+                page, "Opening uploaded files", ["Locate Uploads folder", "Open folder"]
+            )
+            progress_ui.show()
+            try:
+                await progress_ui.set_step(0)
+                directory = uploads_directory(member)
+                await progress_ui.set_step(1)
+                await asyncio.to_thread(open_directory, directory)
+                await progress_ui.set_step(1, complete=True)
+            except (FileNotFoundError, OSError, ValueError) as error:
+                progress_ui.show_error(error)
+                return
+            progress_ui.close()
+
+        upload_files_button = ft.OutlinedButton(
+            "Upload files",
+            icon=ft.Icons.UPLOAD_FILE,
+            disabled=not directory_already_exists,
+            on_click=upload_files,
+        )
+        view_uploads_button = ft.OutlinedButton(
+            "View uploaded files",
+            icon=ft.Icons.FOLDER_OPEN,
+            disabled=not directory_already_exists,
+            on_click=view_uploaded_files,
         )
 
         history_list = ft.Column(spacing=8)
@@ -805,79 +905,87 @@ def build_trainees_view(page: ft.Page) -> ft.View:
             on_click=build_history_report,
         )
 
-        details.controls = [
-            ft.ContextMenu(
-                content=ft.Container(
-                    content=ft.Column(
+        information_menu = ft.ContextMenu(
+            content=ft.Column(
+                [
+                    ft.Row(
                         [
-                            ft.Row(
+                            ft.CircleAvatar(
+                                content=ft.Text(
+                                    str(member.get("operating_initials", "")).upper(),
+                                    weight=ft.FontWeight.BOLD,
+                                ),
+                                radius=30,
+                                bgcolor=ft.Colors.PRIMARY_CONTAINER,
+                                color=ft.Colors.ON_PRIMARY_CONTAINER,
+                            ),
+                            ft.Column(
                                 [
-                                    ft.CircleAvatar(
-                                        content=ft.Text(
-                                            str(
-                                                member.get("operating_initials", "")
-                                            ).upper(),
-                                            weight=ft.FontWeight.BOLD,
-                                        ),
-                                        radius=30,
-                                        bgcolor=ft.Colors.PRIMARY_CONTAINER,
-                                        color=ft.Colors.ON_PRIMARY_CONTAINER,
+                                    ft.Text(
+                                        f"{member.get('first_name', '')} "
+                                        f"{member.get('last_name', '')}",
+                                        size=26,
+                                        weight=ft.FontWeight.BOLD,
                                     ),
-                                    ft.Column(
-                                        [
-                                            ft.Text(
-                                                f"{member.get('first_name', '')} "
-                                                f"{member.get('last_name', '')}",
-                                                size=26,
-                                                weight=ft.FontWeight.BOLD,
-                                            ),
-                                            ft.Text(
-                                                f"Operating initials: "
-                                                f"{member.get('operating_initials', '')}",
-                                                color=ft.Colors.ON_SURFACE_VARIANT,
-                                            ),
-                                        ],
-                                        spacing=2,
+                                    ft.Text(
+                                        f"Operating initials: "
+                                        f"{member.get('operating_initials', '')}",
+                                        color=ft.Colors.ON_SURFACE_VARIANT,
                                     ),
                                 ],
-                                spacing=18,
+                                spacing=2,
                             ),
-                            ft.Divider(),
-                            plain_information,
-                            editing_information,
-                            ft.Row(
-                                [
-                                    create_directory_button,
-                                    daily_report_button,
-                                    history_report_button,
-                                    message,
-                                ],
-                                wrap=True,
-                            ),
-                            ft.Divider(height=28),
-                            ft.Text(
-                                "Training History",
-                                size=20,
-                                weight=ft.FontWeight.BOLD,
-                                color=ft.Colors.PRIMARY,
-                            ),
-                            history_empty,
-                            history_list,
                         ],
                         spacing=18,
                     ),
-                    bgcolor=ft.Colors.SURFACE_CONTAINER_LOW,
-                    border=ft.Border.all(1, ft.Colors.OUTLINE_VARIANT),
-                    border_radius=14,
-                    padding=28,
-                ),
-                secondary_items=[
-                    ft.PopupMenuItem(
-                        content="Edit training information",
-                        icon=ft.Icons.EDIT,
-                        on_click=begin_edit,
-                    )
+                    ft.Divider(),
+                    plain_information,
+                    editing_information,
                 ],
+                spacing=18,
+            ),
+            secondary_items=[
+                ft.PopupMenuItem(
+                    content="Edit training information",
+                    icon=ft.Icons.EDIT,
+                    on_click=begin_edit,
+                )
+            ],
+        )
+
+        details.controls = [
+            ft.Container(
+                content=ft.Column(
+                    [
+                        information_menu,
+                        ft.Row(
+                            [
+                                create_directory_button,
+                                open_guide_button,
+                                daily_report_button,
+                                history_report_button,
+                                upload_files_button,
+                                view_uploads_button,
+                                message,
+                            ],
+                            wrap=True,
+                        ),
+                        ft.Divider(height=28),
+                        ft.Text(
+                            "Training History",
+                            size=20,
+                            weight=ft.FontWeight.BOLD,
+                            color=ft.Colors.PRIMARY,
+                        ),
+                        history_empty,
+                        history_list,
+                    ],
+                    spacing=18,
+                ),
+                bgcolor=ft.Colors.SURFACE_CONTAINER_LOW,
+                border=ft.Border.all(1, ft.Colors.OUTLINE_VARIANT),
+                border_radius=14,
+                padding=28,
             )
         ]
 

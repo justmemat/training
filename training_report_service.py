@@ -7,7 +7,6 @@ from typing import Any
 from trainee_service import format_start_date
 from training_directory_service import TRAINING_DIRECTORY_ROOT, full_name
 
-
 TRAINING_REPORT_TEMPLATE = Path(
     r"T:\BAE\Training\Onboarding\Masters\STARS Adaptation Specialist Training Report.pdf"
 )
@@ -63,9 +62,14 @@ def build_report_fields(
     return fields
 
 
-def _available_report_path(reports_directory: Path, initials: str, day: date) -> Path:
+def _available_report_path(
+    reports_directory: Path, initials: str, instructor_initials: str, day: date
+) -> Path:
     """Return a non-conflicting filename so an earlier report is never overwritten."""
-    stem = f"STARS Training Report - {initials} - {day.isoformat()}"
+    stem = (
+        f"STARS Training Report - {initials} - {instructor_initials} - "
+        f"{day.isoformat()}"
+    )
     candidate = reports_directory / f"{stem}.pdf"
     sequence = 2
     while candidate.exists():
@@ -88,7 +92,9 @@ def create_training_report(
 ) -> Path:
     """Fill the daily-report template and save it in the trainee's Reports folder."""
     if not template_path.is_file():
-        raise FileNotFoundError(f"Training report template was not found: {template_path}")
+        raise FileNotFoundError(
+            f"Training report template was not found: {template_path}"
+        )
     initials = str(trainee.get("operating_initials", "")).strip().upper()
     reports_directory = output_root / initials / "Reports"
     if not reports_directory.is_dir():
@@ -108,7 +114,24 @@ def create_training_report(
         instructor_comments=instructor_comments,
         report_date=effective_date,
     )
-    output_path = _available_report_path(reports_directory, initials, effective_date)
+    instructor = next(
+        (
+            member
+            for member in team_members
+            if str(member.get("id", "")) == instructor_id
+        ),
+        None,
+    )
+    instructor_initials = (
+        str(instructor.get("operating_initials", "") if instructor else "")
+        .strip()
+        .upper()
+    )
+    if not instructor_initials:
+        raise ValueError("The selected instructor must have operating initials.")
+    output_path = _available_report_path(
+        reports_directory, initials, instructor_initials, effective_date
+    )
     reader = PdfReader(str(template_path))
     writer = PdfWriter()
     writer.clone_document_from_reader(reader)

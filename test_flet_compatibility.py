@@ -100,9 +100,7 @@ class FletCompatibilityTests(unittest.TestCase):
 
         self.assertIsNone(view.appbar)
         self.assertEqual(navigation.controls[0].value, "ATLAS")
-        self.assertEqual(
-            navigation.controls[1].value, "Choose an area to get started"
-        )
+        self.assertEqual(navigation.controls[1].value, "Choose an area to get started")
         self.assertEqual(len(navigation.controls), 4)
 
         first_button = navigation.controls[3].controls[0].content.controls[3]
@@ -146,7 +144,9 @@ class FletCompatibilityTests(unittest.TestCase):
             self.assertTrue(update_is_available(version_file))
 
     @patch("landing_page.subprocess.Popen")
-    def test_installer_is_launched_through_windows_command_shell(self, popen: Mock) -> None:
+    def test_installer_is_launched_through_windows_command_shell(
+        self, popen: Mock
+    ) -> None:
         installer = Path(r"T:\BAE\Training\App\install.bat")
         launch_installer(installer)
         command = popen.call_args.args[0]
@@ -318,7 +318,9 @@ class FletCompatibilityTests(unittest.TestCase):
         selector.value = "trainee-1"
         selector.on_select(Mock(spec=ft.ControlEvent))
         details = view.controls[0].content.controls[2]
-        context_menu = details.controls[0]
+        detail_card = details.controls[0]
+        content_column = detail_card.content
+        context_menu = content_column.controls[0]
 
         self.assertIsInstance(context_menu, ft.ContextMenu)
         self.assertEqual(
@@ -328,9 +330,10 @@ class FletCompatibilityTests(unittest.TestCase):
         self.assertIsNone(context_menu.tooltip)
         details.update = Mock()
         context_menu.secondary_items[0].on_click(Mock(spec=ft.ControlEvent))
-        content_column = context_menu.content.content
-        self.assertFalse(content_column.controls[2].visible)
-        self.assertTrue(content_column.controls[3].visible)
+        information_column = context_menu.content
+        self.assertFalse(information_column.controls[2].visible)
+        self.assertTrue(information_column.controls[3].visible)
+        self.assertNotIsInstance(content_column.controls[-1], ft.ContextMenu)
 
 
 class FletStartupTests(unittest.IsolatedAsyncioTestCase):

@@ -17,10 +17,13 @@ from trainee_service import (
 from training_directory_service import (
     add_business_days,
     build_guide_fields,
+    copy_files_to_uploads,
     create_trainee_folders,
     trainee_directory_exists,
+    training_guide_path,
+    uploads_directory,
 )
-from training_report_service import build_report_fields
+from training_report_service import _available_report_path, build_report_fields
 from history_report_service import (
     business_days_used,
     instructor_percentages,
@@ -253,19 +256,35 @@ class TraineeServiceTests(unittest.TestCase):
 
 
 class TrainingDirectoryServiceTests(unittest.TestCase):
-    def test_trainee_directory_contains_reports_subfolder(self) -> None:
+    def test_trainee_directory_contains_required_subfolders(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             trainee_directory = create_trainee_folders(Path(directory), "JR")
             self.assertEqual(trainee_directory, Path(directory) / "JR")
             self.assertTrue(trainee_directory.is_dir())
             self.assertTrue((trainee_directory / "Reports").is_dir())
+            self.assertTrue((trainee_directory / "Uploads").is_dir())
             self.assertTrue(
-                trainee_directory_exists(
-                    {"operating_initials": "jr"}, Path(directory)
-                )
+                trainee_directory_exists({"operating_initials": "jr"}, Path(directory))
             )
             with self.assertRaisesRegex(FileExistsError, "already exists"):
                 create_trainee_folders(Path(directory), "JR")
+
+    def test_training_guide_path_and_upload_copy_use_trainee_directory(self) -> None:
+        trainee = {"operating_initials": "jr"}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            create_trainee_folders(root, "JR")
+            source = root / "lesson notes.txt"
+            source.write_text("notes", encoding="utf-8")
+
+            self.assertEqual(
+                training_guide_path(trainee, root),
+                root / "JR" / "STARS Adaptation Specialist Training Guide - JR.pdf",
+            )
+            copied = copy_files_to_uploads(trainee, [source], root)
+            self.assertEqual(copied, [root / "JR" / "Uploads" / source.name])
+            self.assertEqual(copied[0].read_text(encoding="utf-8"), "notes")
+            self.assertEqual(uploads_directory(trainee, root), root / "JR" / "Uploads")
 
     def test_business_day_calculation_skips_weekends(self) -> None:
         self.assertEqual(add_business_days(date(2026, 7, 24), 1), date(2026, 7, 27))
@@ -318,6 +337,15 @@ class TrainingDirectoryServiceTests(unittest.TestCase):
 
 
 class TrainingReportServiceTests(unittest.TestCase):
+    def test_report_filename_includes_selected_instructor_initials(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = _available_report_path(
+                Path(directory), "JR", "PP", date(2026, 7, 27)
+            )
+        self.assertEqual(
+            output.name, "STARS Training Report - JR - PP - 2026-07-27.pdf"
+        )
+
     def test_daily_report_fields_are_built_from_program_and_user_data(self) -> None:
         trainee = {
             "id": "trainee",
@@ -425,7 +453,9 @@ class TrainingHistoryServiceTests(unittest.TestCase):
             {"trainee_id": "one", "date": "2026-07-27"},
         ]
         history = trainee_history(records, "one")
-        self.assertEqual([entry["date"] for entry in history], ["2026-07-27", "2026-07-01"])
+        self.assertEqual(
+            [entry["date"] for entry in history], ["2026-07-27", "2026-07-01"]
+        )
 
     def test_report_location_converts_to_file_uri(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -452,12 +482,8 @@ class HistoryReportServiceTests(unittest.TestCase):
         self.assertEqual(training_end_date(date(2026, 7, 27)), date(2026, 11, 30))
 
     def test_business_days_used_excludes_start_and_weekends(self) -> None:
-        self.assertEqual(
-            business_days_used(date(2026, 7, 24), date(2026, 7, 27)), 1
-        )
-        self.assertEqual(
-            business_days_used(date(2026, 7, 27), date(2026, 7, 27)), 0
-        )
+        self.assertEqual(business_days_used(date(2026, 7, 24), date(2026, 7, 27)), 1)
+        self.assertEqual(business_days_used(date(2026, 7, 27), date(2026, 7, 27)), 0)
 
     def test_instructor_percentages_use_selected_trainees_history(self) -> None:
         percentages = instructor_percentages(
@@ -543,7 +569,9 @@ class MonthlyTrainingServiceTests(unittest.TestCase):
         sessions = sorted_sessions(
             [{"date": "2026-07-01"}, "invalid", {"date": "2026-08-01"}]
         )
-        self.assertEqual([session["date"] for session in sessions], ["2026-08-01", "2026-07-01"])
+        self.assertEqual(
+            [session["date"] for session in sessions], ["2026-08-01", "2026-07-01"]
+        )
 
     def test_presentation_file_uses_operating_system_opener(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
