@@ -1,11 +1,12 @@
-"""Create a trainee directory and populate the master training-guide PDF."""
+"""Create and manage a trainee's training directory and guide."""
 
 from datetime import date, timedelta
+import os
 from pathlib import Path
+import shutil
 from typing import Any
 
 from trainee_service import format_start_date
-
 
 TRAINING_GUIDE_TEMPLATE = Path(
     r"T:\BAE\Training\Onboarding\Masters\STARS Adaptation Specialist Training Guide.pdf"
@@ -32,7 +33,7 @@ def full_name(member: dict[str, Any] | None) -> str:
 
 
 def create_trainee_folders(output_root: Path, initials: str) -> Path:
-    """Create the trainee directory and its required Reports subfolder."""
+    """Create the trainee directory and its required subfolders."""
     output_directory = output_root / initials
     try:
         output_directory.mkdir(parents=True, exist_ok=False)
@@ -41,7 +42,66 @@ def create_trainee_folders(output_root: Path, initials: str) -> Path:
             f"A training directory already exists for {initials}: {output_directory}"
         ) from error
     (output_directory / "Reports").mkdir()
+    (output_directory / "Uploads").mkdir()
     return output_directory
+
+
+def trainee_directory(
+    trainee: dict[str, Any], output_root: Path = TRAINING_DIRECTORY_ROOT
+) -> Path:
+    """Return the expected directory for a trainee's operating initials."""
+    initials = str(trainee.get("operating_initials", "")).strip().upper()
+    if not initials:
+        raise ValueError("The trainee must have operating initials.")
+    return output_root / initials
+
+
+def training_guide_path(
+    trainee: dict[str, Any], output_root: Path = TRAINING_DIRECTORY_ROOT
+) -> Path:
+    """Return the populated training guide's expected path."""
+    initials = str(trainee.get("operating_initials", "")).strip().upper()
+    return trainee_directory(trainee, output_root) / (
+        f"STARS Adaptation Specialist Training Guide - {initials}.pdf"
+    )
+
+
+def uploads_directory(
+    trainee: dict[str, Any], output_root: Path = TRAINING_DIRECTORY_ROOT
+) -> Path:
+    """Return the trainee's Uploads directory, requiring it to exist."""
+    directory = trainee_directory(trainee, output_root) / "Uploads"
+    if not directory.is_dir():
+        raise FileNotFoundError(
+            "Create the trainee's training directory before uploading files."
+        )
+    return directory
+
+
+def copy_files_to_uploads(
+    trainee: dict[str, Any],
+    source_paths: list[str | Path],
+    output_root: Path = TRAINING_DIRECTORY_ROOT,
+) -> list[Path]:
+    """Copy selected files into the trainee's Uploads directory."""
+    destination = uploads_directory(trainee, output_root)
+    copied: list[Path] = []
+    for source_value in source_paths:
+        source = Path(source_value)
+        if not source.is_file():
+            raise FileNotFoundError(f"Selected upload file was not found: {source}")
+        target = destination / source.name
+        shutil.copy2(source, target)
+        copied.append(target)
+    return copied
+
+
+def open_directory(directory: Path) -> Path:
+    """Open a directory in the operating system's file browser."""
+    if not directory.is_dir():
+        raise FileNotFoundError(f"Directory was not found: {directory}")
+    os.startfile(str(directory))  # type: ignore[attr-defined]
+    return directory
 
 
 def trainee_directory_exists(
@@ -101,7 +161,9 @@ def create_training_directory(
 ) -> Path:
     """Fill the PDF template and save it beneath the trainee's initials."""
     if not template_path.is_file():
-        raise FileNotFoundError(f"Training guide template was not found: {template_path}")
+        raise FileNotFoundError(
+            f"Training guide template was not found: {template_path}"
+        )
     initials = str(trainee.get("operating_initials", "")).strip().upper()
     if not initials:
         raise ValueError("The trainee must have operating initials.")
@@ -113,17 +175,13 @@ def create_training_directory(
     from pypdf import PdfReader, PdfWriter
 
     output_directory = create_trainee_folders(output_root, initials)
-    output_path = output_directory / (
-        f"STARS Adaptation Specialist Training Guide - {initials}.pdf"
-    )
+    output_path = training_guide_path(trainee, output_root)
     fields = build_guide_fields(trainee, profile, team_members)
     reader = PdfReader(str(template_path))
     writer = PdfWriter()
     writer.clone_document_from_reader(reader)
     for pdf_page in writer.pages:
-        writer.update_page_form_field_values(
-            pdf_page, fields, auto_regenerate=False
-        )
+        writer.update_page_form_field_values(pdf_page, fields, auto_regenerate=False)
     with output_path.open("wb") as output_file:
         writer.write(output_file)
     return output_path
